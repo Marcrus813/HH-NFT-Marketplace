@@ -905,6 +905,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openzeppelin/contracts@npm:^5.3.0":
+  version: 5.3.0
+  resolution: "@openzeppelin/contracts@npm:5.3.0"
+  checksum: 10c0/b8a2d97413c24635c92de4b2a1188fa58ab252515aff38eabce4fa66bd3d8ae1649010d17fccaeb4e266bf8314c8bd92757fedca97bf643b6b98e11dea3fa83d
+  languageName: node
+  linkType: hard
+
 "@pkgjs/parseargs@npm:^0.11.0":
   version: 0.11.0
   resolution: "@pkgjs/parseargs@npm:0.11.0"
@@ -2154,6 +2161,13 @@ __metadata:
   dependencies:
     path-type: "npm:^4.0.0"
   checksum: 10c0/dcac00920a4d503e38bb64001acb19df4efc14536ada475725e12f52c16777afdee4db827f55f13a908ee7efc0cb282e2e3dbaeeb98c0993dd93d1802d3bf00c
+  languageName: node
+  linkType: hard
+
+"dotenv@npm:^16.5.0":
+  version: 16.5.0
+  resolution: "dotenv@npm:16.5.0"
+  checksum: 10c0/5bc94c919fbd955bf0ba44d33922a1e93d1078e64a1db5c30faeded1d996e7a83c55332cb8ea4fae5a9ca4d0be44cbceb95c5811e70f9f095298df09d1997dd9
   languageName: node
   linkType: hard
 
@@ -4602,9 +4616,11 @@ __metadata:
     "@nomicfoundation/hardhat-network-helpers": "npm:^1.0.0"
     "@nomicfoundation/hardhat-toolbox": "npm:^5.0.0"
     "@nomicfoundation/hardhat-verify": "npm:^2.0.0"
+    "@openzeppelin/contracts": "npm:^5.3.0"
     "@typechain/ethers-v6": "npm:^0.5.0"
     "@typechain/hardhat": "npm:^9.0.0"
     chai: "npm:^4.2.0"
+    dotenv: "npm:^16.5.0"
     ethers: "npm:^6.4.0"
     hardhat: "npm:^2.23.0"
     hardhat-gas-reporter: "npm:^1.0.8"

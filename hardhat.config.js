@@ -23,12 +23,12 @@ module.exports = {
         ],
     },
     networks: {
-        /* hardhat: {
+        hardhat: {
             chainId: 31337,
             forking: {
                 url: MAINNET_RPC_URL,
             },
-        }, */
+        },
         localhost: {
             ignition: {
                 blockPollingInterval: 1_000,
