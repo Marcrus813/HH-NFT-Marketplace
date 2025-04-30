@@ -29,3 +29,33 @@
             - Default should be ETH, then should naturally support wETH
             - When using ETH, `paymentToken` use `address(0)`, and for wETH, try to match
                 - Not dynamically added cuz this should be implicit support, hardcoding should be fine
+    - Current solution:
+        - All are recorded in ETH, when listed, user specifies expected token and price, then converted to ETH
+            - This will introduce problem: when people have bought the item, they will pay the token, I would have to recalculate the amount then transfer
+    - Solution after re-thinking
+        - Points
+            1. Discarding the idea of strict token match, this will obviously work, not match token will have to swap outside of the platform but this will defeat the purpose of flexibility
+            2. Auto swapping will be too complicated for this learning project, and it will be gas heavy and risky
+            3. Only allows stable coins, also kinda defeating the purpose
+            4. Seller configures to accepted non-preferred token purchase, if true then just transfer, if false then will have to convert to stable coin or ETH
+        - Opting for the configuration method
+            - `Listing` records `strictPayment`
+                - If true, then don't have to worry much, just transfer the token to seller when withdrawing
+                - If false, then will have to do a swap to ETH
+                    - Providing ETH or USDC are the same for this practice purpose, in production it is best to use USDC though
+            - When buying token
+                - If strict payment, only allows payment in preferred token, easy
+                - If not then accept the payment, transfer the NFT to buyer, then under the hood swap payment to ETH then record the amount for withdraw
+                - Buyer first `ERC20.approve` then marketplace does `transferFrom` to pay with tokens, `payable` only works with ETH
+                    - **To do this, need to insert a function on front end to approve the market place**, then proceed to marketplace contract and `transferFrom`, so in the contract consider the marketplace already approved
+    - Difficulties
+        - Reading all info from `s_listingMap`
+            - `mapping` is not iterable, so my first idea was to store the keys in arrays:
+
+                ```solidity
+                mapping(address => mapping(uint256 => Listing)) private s_listingMap;
+                address[] private s_allNftContracts;
+                mapping(address => uint256[]) private s_allTokenIds;
+                ```
+
+                but then I would need to do duplication check on every `s_allNftContracts` entry

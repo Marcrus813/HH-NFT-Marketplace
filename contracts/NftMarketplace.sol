@@ -2,6 +2,9 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
 error NftMarketplace__PriceIsZero();
 error NftMarketplace__NotApprovedForMarketplace(
@@ -14,10 +17,24 @@ error NftMarketplace__NotListedByOwner(
     uint256 tokenId,
     address sender
 );
+error NftMarketplace__TokenNotListed(address nftAddress, uint256 tokenId);
 
+error NftMarketplace__InvalidPayment(
+    address paymentToken,
+    address buyer,
+    uint256 price
+);
+error NftMarketplace__PaymentNotAccepted(
+    address nftAddress,
+    uint256 tokenId,
+    address paymentToken
+);
 error NftMarketplace__PaymentNotSupported(address paymentToken);
 
 contract NftMarketplace {
+    using SignedMath for uint256;
+    using SignedMath for int256;
+
     /*- `listNft`: List the NFT on the marketplace
     - `buyNft`: Buy
     - `cancelNft`: Cancel listing
@@ -28,18 +45,27 @@ contract NftMarketplace {
     address[] private s_supportedPayments;
     mapping(address => address) private s_priceFeeds;
 
+    /// @dev Price in ETH
     struct Listing {
+        address preferredPayment;
         uint256 price;
+        bool strictPayment;
         address seller;
     }
     // NFT contract address => tokenId => Listing(Will contain price, seller)
     mapping(address => mapping(uint256 => Listing)) private s_listingMap;
+    address[] private s_allNftContracts;
+    mapping(address => uint256[]) private s_allTokenIds;
+    // Seller address => Token address => amount
+    mapping(address => mapping(address => uint256)) private s_proceeds;
 
     event TokenListed(
         address indexed tokenAddress,
         uint256 indexed tokenId,
         address indexed seller,
-        uint256 price
+        address preferredPayment,
+        uint256 price,
+        bool strictPayment
     );
 
     constructor(address[] memory supportedPayments) {
@@ -105,11 +131,12 @@ contract NftMarketplace {
     function listNft(
         address nftAddress,
         uint256 tokenId,
-        address paymentToken,
-        uint256 price
+        address preferredPayment,
+        uint256 price,
+        bool strictPayment
     )
         external
-        paymentSupported(paymentToken)
+        paymentSupported(preferredPayment)
         priceNotZero(price)
         notYetListed(nftAddress, tokenId)
         isTokenOwner(nftAddress, tokenId, msg.sender)
@@ -128,18 +155,163 @@ contract NftMarketplace {
                 tokenId
             );
         }
-        s_listingMap[nftAddress][tokenId] = Listing(price, msg.sender);
-        emit TokenListed(nftAddress, tokenId, msg.sender, price);
+        s_listingMap[nftAddress][tokenId] = Listing(
+            preferredPayment,
+            price,
+            strictPayment,
+            msg.sender
+        );
+        
+        emit TokenListed(
+            nftAddress,
+            tokenId,
+            msg.sender,
+            preferredPayment,
+            price,
+            strictPayment
+        );
     }
 
-    function convertPriceToEth(
+    function convertToEth(
         address paymentToken,
         uint256 amount
-    ) private pure returns (uint256 result) {
-        // TODO: Implementation
+    ) private view paymentSupported(paymentToken) returns (uint256 result) {
+        if (paymentToken != address(0) && paymentToken != WETH_ADDRESS) {
+            AggregatorV3Interface priceFeed = AggregatorV3Interface(
+                s_priceFeeds[paymentToken]
+            );
+            (, int256 answer, , , ) = priceFeed.latestRoundData();
+            result = answer.abs();
+        } else {
+            result = amount;
+        }
     }
 
-    function buyToken(address nftAddress, uint256 tokenId) external payable {}
+    modifier tokenListed(address nftAddress, uint256 tokenId) {
+        Listing memory listing = s_listingMap[nftAddress][tokenId];
+        if (listing.price <= 0) {
+            revert NftMarketplace__TokenNotListed(nftAddress, tokenId);
+        }
+        _;
+    }
+
+    modifier strictPaymentChecked(
+        address nftAddress,
+        uint256 tokenId,
+        address paymentToken
+    ) {
+        bool strictPayment = s_listingMap[nftAddress][tokenId].strictPayment;
+        if (!strictPayment) {
+            _;
+        } else {
+            if (
+                paymentToken !=
+                s_listingMap[nftAddress][tokenId].preferredPayment
+            ) {
+                revert NftMarketplace__PaymentNotAccepted(
+                    nftAddress,
+                    tokenId,
+                    paymentToken
+                );
+            } else {
+                _;
+            }
+        }
+    }
+
+    function verifyPayment(
+        uint256 msgValue,
+        bool strictPayment,
+        address paymentToken,
+        uint256 price
+    ) internal view returns (bool result) {
+        IERC20 paymentTokenInstance = IERC20(paymentToken);
+        uint256 allowance = paymentTokenInstance.allowance(
+            msg.sender,
+            address(this)
+        );
+        uint256 buyerBalance = paymentTokenInstance.balanceOf(msg.sender);
+        if (strictPayment) {
+            if (paymentToken == address(0)) {
+                // ETH
+                if (msgValue < price) {
+                    result = false;
+                } else {
+                    result = true;
+                }
+            } else {
+                // ERC20
+
+                if (allowance < price || buyerBalance < price) {
+                    result = false;
+                } else {
+                    result = true;
+                }
+            }
+        } else {
+            uint256 convertedPrice = convertToEth(paymentToken, price);
+            if (paymentToken == address(0)) {
+                // ETH or wETH
+                if (msgValue < convertedPrice) {
+                    result = false;
+                } else {
+                    result = true;
+                }
+            } else {
+                // ERC20
+                uint256 convertedAllowance = convertToEth(
+                    paymentToken,
+                    allowance
+                );
+                uint256 convertedBuyerBalance = convertToEth(
+                    paymentToken,
+                    buyerBalance
+                );
+                if (
+                    convertedAllowance < convertedPrice ||
+                    convertedBuyerBalance < convertedPrice
+                ) {
+                    result = false;
+                } else {
+                    result = true;
+                }
+            }
+        }
+    }
+
+    function buyToken(
+        address nftAddress,
+        uint256 tokenId,
+        address paymentToken
+    )
+        external
+        payable
+        tokenListed(nftAddress, tokenId)
+        paymentSupported(paymentToken)
+        strictPaymentChecked(nftAddress, tokenId, paymentToken)
+    {
+        Listing memory listing = s_listingMap[nftAddress][tokenId];
+        uint256 nftPrice = listing.price;
+        bool strictPayment = listing.strictPayment;
+        bool paymentValid = verifyPayment(
+            msg.value,
+            strictPayment,
+            paymentToken,
+            nftPrice
+        );
+        if (!paymentValid) {
+            revert NftMarketplace__InvalidPayment(
+                paymentToken,
+                msg.sender,
+                nftPrice
+            );
+        }
+        if (strictPayment) {
+            IERC20 paymentTokenInstance = IERC20(paymentToken);
+            uint256 price = listing.price;
+            paymentTokenInstance.transferFrom(msg.sender, address(this), price);
+        }
+    }
 
     function checkPaymentSupport(
         address tokenAddress
@@ -182,5 +354,9 @@ contract NftMarketplace {
             revert NftMarketplace__PaymentNotSupported(payment);
         }
         result = tokenPriceFeed;
+    }
+
+    function getListing() public view returns (Listing memory result) {
+        // TODO: To be implemented
     }
 }
