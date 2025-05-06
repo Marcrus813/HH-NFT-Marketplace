@@ -23,6 +23,7 @@
 ## Payments
 
 - Support multiple tokens
+
     - To operate multiple tokens, tests using mocks is clearly not ideal, so I would use fork
     - Use mapping to store corresponding price feed address
         - When payment / listing, will need to supply token address
@@ -49,7 +50,9 @@
                 - Buyer first `ERC20.approve` then marketplace does `transferFrom` to pay with tokens, `payable` only works with ETH
                     - **To do this, need to insert a function on front end to approve the market place**, then proceed to marketplace contract and `transferFrom`, so in the contract consider the marketplace already approved
     - Difficulties
+
         - Reading all info from `s_listingMap`
+
             - `mapping` is not iterable, so my first idea was to store the keys in arrays:
 
                 ```solidity
@@ -59,3 +62,8 @@
                 ```
 
                 but then I would need to do duplication check on every `s_allNftContracts` entry
+
+                - Current idea
+                    - Use a new mapping `s_nftAddressTracked`, every address has a default value of false, when listed set the value to true and push to `address[]`, so in future listings, `tracked` will be true and address won't be pushed, same with token IDs just with an extra layer of mapping
+                        - Problems
+                            - With this approach, when buying will have to check and clear corresponding record, might cost a lot of gas

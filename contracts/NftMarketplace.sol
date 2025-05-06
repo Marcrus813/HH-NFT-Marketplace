@@ -52,10 +52,24 @@ contract NftMarketplace {
         bool strictPayment;
         address seller;
     }
+
+    struct ListingKey {
+        address nftAddress;
+        uint256 tokenId;
+    }
+
     // NFT contract address => tokenId => Listing(Will contain price, seller)
     mapping(address => mapping(uint256 => Listing)) private s_listingMap;
-    address[] private s_allNftContracts;
-    mapping(address => uint256[]) private s_allTokenIds;
+    ListingKey[] private s_activeListings;
+    // NFT contract address => tokenId => Index in listing key array + 1
+    /**
+     * Reason for +1:
+     *     - 0 means not listed, but default value is 0, so if we store the first index 0, it will be confused with not listed
+     *     - So we add +1 to the index, so that 0 means not listed and 1 means first index
+     */
+    mapping(address => mapping(uint256 => uint256))
+        private s_listingPaddedIndex;
+
     // Seller address => Token address => amount
     mapping(address => mapping(address => uint256)) private s_proceeds;
 
@@ -155,13 +169,17 @@ contract NftMarketplace {
                 tokenId
             );
         }
+
         s_listingMap[nftAddress][tokenId] = Listing(
             preferredPayment,
             price,
             strictPayment,
             msg.sender
         );
-        
+
+        s_activeListings.push(ListingKey(nftAddress, tokenId));
+        s_listingPaddedIndex[nftAddress][tokenId] = s_activeListings.length;
+
         emit TokenListed(
             nftAddress,
             tokenId,
@@ -170,6 +188,11 @@ contract NftMarketplace {
             price,
             strictPayment
         );
+    }
+
+    function removeListing(address nftAddress, uint256 tokenId) internal {
+        uint256 paddedIndex = s_listingPaddedIndex[nftAddress][tokenId];
+        require(paddedIndex != 0, NftMarketplace__TokenNotListed(nftAddress, tokenId));
     }
 
     function convertToEth(
@@ -251,7 +274,7 @@ contract NftMarketplace {
         } else {
             uint256 convertedPrice = convertToEth(paymentToken, price);
             if (paymentToken == address(0)) {
-                // ETH or wETH
+                // ETH
                 if (msgValue < convertedPrice) {
                     result = false;
                 } else {
