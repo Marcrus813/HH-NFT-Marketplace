@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 
@@ -192,7 +192,26 @@ contract NftMarketplace {
 
     function removeListing(address nftAddress, uint256 tokenId) internal {
         uint256 paddedIndex = s_listingPaddedIndex[nftAddress][tokenId];
-        require(paddedIndex != 0, NftMarketplace__TokenNotListed(nftAddress, tokenId));
+        require(
+            paddedIndex != 0,
+            NftMarketplace__TokenNotListed(nftAddress, tokenId)
+        );
+        uint256 index = paddedIndex - 1;
+
+        uint256 lastIndex = s_activeListings.length - 1;
+        if (index != lastIndex) {
+            // Not removing the last, so can't pop, need to swap first
+            ListingKey memory lastListing = s_activeListings[lastIndex];
+            s_activeListings[index] = lastListing;
+            s_listingPaddedIndex[lastListing.nftAddress][
+                lastListing.tokenId
+            ] = paddedIndex;
+        }
+
+        s_activeListings.pop();
+
+        delete s_listingPaddedIndex[nftAddress][tokenId];
+        delete s_listingMap[nftAddress][tokenId];
     }
 
     function convertToEth(
@@ -203,8 +222,13 @@ contract NftMarketplace {
             AggregatorV3Interface priceFeed = AggregatorV3Interface(
                 s_priceFeeds[paymentToken]
             );
+            uint8 priceFeedDecimals = priceFeed.decimals();
             (, int256 answer, , , ) = priceFeed.latestRoundData();
-            result = answer.abs();
+
+            ERC20 paymentTokenInstance = ERC20(paymentToken);
+            uint8 tokenDecimals = paymentTokenInstance.decimals();
+
+            result = (answer.abs() * amount) / 1e8;
         } else {
             result = amount;
         }
@@ -248,7 +272,7 @@ contract NftMarketplace {
         address paymentToken,
         uint256 price
     ) internal view returns (bool result) {
-        IERC20 paymentTokenInstance = IERC20(paymentToken);
+        ERC20 paymentTokenInstance = ERC20(paymentToken);
         uint256 allowance = paymentTokenInstance.allowance(
             msg.sender,
             address(this)
@@ -329,10 +353,24 @@ contract NftMarketplace {
                 nftPrice
             );
         }
+        uint256 price = listing.price;
         if (strictPayment) {
-            IERC20 paymentTokenInstance = IERC20(paymentToken);
-            uint256 price = listing.price;
-            paymentTokenInstance.transferFrom(msg.sender, address(this), price);
+            if (paymentToken == address(0)) {
+                // ETH
+                s_proceeds[listing.seller][address(0)] += msg.value;
+            } else {
+                // ERC20
+                ERC20 paymentTokenInstance = ERC20(paymentToken);
+                paymentTokenInstance.transferFrom(
+                    msg.sender,
+                    address(this),
+                    price
+                );
+                s_proceeds[listing.seller][paymentToken] += price;
+            }
+        } else {
+            address preferredPayment = listing.preferredPayment;
+            bool paymentMatch = paymentToken == preferredPayment;
         }
     }
 
@@ -379,7 +417,45 @@ contract NftMarketplace {
         result = tokenPriceFeed;
     }
 
-    function getListing() public view returns (Listing memory result) {
-        // TODO: To be implemented
+    function getListings(
+        uint256 startIndex,
+        uint256 length
+    ) public view returns (Listing[] memory result) {
+        require(length != 0, "Limit less than 0");
+
+        ListingKey[] memory activeListings = s_activeListings;
+        uint256 listingsCount = activeListings.length;
+        require(startIndex < listingsCount, "Out of bounds");
+
+        if (length >= s_activeListings.length) {
+            length = s_activeListings.length;
+        }
+
+        uint256 destinationIndex = startIndex + length - 1;
+        if (destinationIndex > listingsCount - 1) {
+            uint256 diff = destinationIndex - listingsCount + 1;
+            length -= diff;
+        }
+
+        Listing[] memory buffer = new Listing[](length);
+
+        for (uint256 index = 0; index < length; index++) {
+            ListingKey memory listingKey = activeListings[startIndex + index];
+            Listing memory listing = s_listingMap[listingKey.nftAddress][
+                listingKey.tokenId
+            ];
+            buffer[index] = listing;
+        }
+        result = buffer;
+    }
+
+    function getListingInfo(
+        address nftAddress,
+        uint256 tokenId
+    ) public view returns (Listing memory result) {
+        if (s_listingPaddedIndex[nftAddress][tokenId] == 0) {
+            revert NftMarketplace__TokenNotListed(nftAddress, tokenId);
+        }
+        result = s_listingMap[nftAddress][tokenId];
     }
 }
