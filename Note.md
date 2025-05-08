@@ -1,3 +1,4 @@
+
 # NFT marketplace
 
 ---
@@ -67,3 +68,26 @@
                     - Use a new mapping `s_nftAddressTracked`, every address has a default value of false, when listed set the value to true and push to `address[]`, so in future listings, `tracked` will be true and address won't be pushed, same with token IDs just with an extra layer of mapping
                         - Problems
                             - With this approach, when buying will have to check and clear corresponding record, might cost a lot of gas
+- Pull over push(best practice)
+    - To **Shift the risk associated with transferring ether to the user**
+    - Always have user withdraw instead of sending them
+
+***
+## Reentrancy Attack
+- One of most common attacks, amongst Oracle attack
+- See sub lesson for example
+- Ways to prevent
+    - **ALWAYS** do state changes first, then transfer assets
+    - Mutex locks, E.g.: OpenZeppelin: ReentrancyGuard
+        ```solidity
+        bool locked;
+        function transaction() {
+            require(!locked, "revert");
+
+            locked = true;
+
+            // Complete txn
+
+            locked = false;
+        }
+        ```

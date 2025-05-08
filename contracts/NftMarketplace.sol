@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 error NftMarketplace__PriceIsZero();
 error NftMarketplace__NotApprovedForMarketplace(
@@ -31,7 +32,7 @@ error NftMarketplace__PaymentNotAccepted(
 );
 error NftMarketplace__PaymentNotSupported(address paymentToken);
 
-contract NftMarketplace {
+contract NftMarketplace is ReentrancyGuard {
     using SignedMath for uint256;
     using SignedMath for int256;
 
@@ -80,6 +81,14 @@ contract NftMarketplace {
         address preferredPayment,
         uint256 price,
         bool strictPayment
+    );
+
+    event TokenBought(
+        address indexed buyer,
+        address indexed tokenAddress,
+        uint256 indexed tokenId,
+        address usedPayment,
+        uint256 paymentAmount
     );
 
     constructor(address[] memory supportedPayments) {
@@ -215,22 +224,61 @@ contract NftMarketplace {
     }
 
     function convertToEth(
-        address paymentToken,
+        ERC20 paymentToken,
         uint256 amount
-    ) private view paymentSupported(paymentToken) returns (uint256 result) {
-        if (paymentToken != address(0) && paymentToken != WETH_ADDRESS) {
+    )
+        private
+        view
+        paymentSupported(address(paymentToken))
+        returns (uint256 result)
+    {
+        if (address(paymentToken) != WETH_ADDRESS) {
             AggregatorV3Interface priceFeed = AggregatorV3Interface(
-                s_priceFeeds[paymentToken]
+                s_priceFeeds[address(paymentToken)]
             );
             uint8 priceFeedDecimals = priceFeed.decimals();
             (, int256 answer, , , ) = priceFeed.latestRoundData();
 
-            ERC20 paymentTokenInstance = ERC20(paymentToken);
-            uint8 tokenDecimals = paymentTokenInstance.decimals();
+            uint8 tokenDecimals = paymentToken.decimals();
 
-            result = (answer.abs() * amount) / 1e8;
+            // Convert to 18 decimals
+            uint256 normalizedAmount = amount * (10 ** (18 - tokenDecimals));
+
+            result =
+                (answer.abs() * normalizedAmount) /
+                (10 ** priceFeedDecimals);
         } else {
             result = amount;
+        }
+    }
+
+    function convertFromEth(
+        ERC20 targetToken,
+        uint256 ethAmount
+    )
+        public
+        view
+        paymentSupported(address(targetToken))
+        returns (uint256 result)
+    {
+        if (address(targetToken) != WETH_ADDRESS) {
+            AggregatorV3Interface priceFeed = AggregatorV3Interface(
+                s_priceFeeds[address(targetToken)]
+            );
+            uint8 priceFeedDecimals = priceFeed.decimals();
+            (, int256 answer, , , ) = priceFeed.latestRoundData();
+
+            uint8 tokenDecimals = targetToken.decimals();
+
+            // Calculate the amount in token's decimals
+            result =
+                (ethAmount * (10 ** priceFeedDecimals)) /
+                uint256(answer.abs());
+
+            // Adjust from 18 decimals to token decimals
+            result = result / (10 ** (18 - tokenDecimals));
+        } else {
+            result = ethAmount;
         }
     }
 
@@ -266,18 +314,28 @@ contract NftMarketplace {
         }
     }
 
+    /**
+     *
+     * @param msgValue The amount sent when buying, msg.value
+     * @param strictPayment The strict payment tag of the token
+     * @param paymentToken The token provided by buyer
+     * @param preferredToken The preferred token of the listing
+     * @param price The price of the token
+     * @return result True if the payment is valid, false otherwise
+     * @dev This is used after `strictPaymentChecked` modifier, so if strict payment, then the tokens are matched
+     */
     function verifyPayment(
         uint256 msgValue,
         bool strictPayment,
         address paymentToken,
+        address preferredToken,
         uint256 price
     ) internal view returns (bool result) {
-        ERC20 paymentTokenInstance = ERC20(paymentToken);
-        uint256 allowance = paymentTokenInstance.allowance(
-            msg.sender,
-            address(this)
-        );
-        uint256 buyerBalance = paymentTokenInstance.balanceOf(msg.sender);
+        ERC20 paymentTokenInstance;
+        ERC20 preferredTokenInstance;
+
+        bool paymentMatch = paymentToken == preferredToken;
+
         if (strictPayment) {
             if (paymentToken == address(0)) {
                 // ETH
@@ -288,7 +346,14 @@ contract NftMarketplace {
                 }
             } else {
                 // ERC20
-
+                paymentTokenInstance = ERC20(paymentToken);
+                uint256 allowance = paymentTokenInstance.allowance(
+                    msg.sender,
+                    address(this)
+                );
+                uint256 buyerBalance = paymentTokenInstance.balanceOf(
+                    msg.sender
+                );
                 if (allowance < price || buyerBalance < price) {
                     result = false;
                 } else {
@@ -296,31 +361,69 @@ contract NftMarketplace {
                 }
             }
         } else {
-            uint256 convertedPrice = convertToEth(paymentToken, price);
             if (paymentToken == address(0)) {
-                // ETH
-                if (msgValue < convertedPrice) {
-                    result = false;
+                if (paymentMatch) {
+                    if (msgValue < price) {
+                        result = false;
+                    } else {
+                        result = true;
+                    }
                 } else {
-                    result = true;
+                    preferredTokenInstance = ERC20(preferredToken);
+                    uint256 convertedValue = convertToEth(
+                        preferredTokenInstance,
+                        price
+                    );
+                    if (msgValue < convertedValue) {
+                        result = false;
+                    } else {
+                        result = true;
+                    }
                 }
             } else {
                 // ERC20
-                uint256 convertedAllowance = convertToEth(
-                    paymentToken,
-                    allowance
-                );
-                uint256 convertedBuyerBalance = convertToEth(
-                    paymentToken,
-                    buyerBalance
-                );
-                if (
-                    convertedAllowance < convertedPrice ||
-                    convertedBuyerBalance < convertedPrice
-                ) {
-                    result = false;
+                if (paymentMatch) {
+                    paymentTokenInstance = ERC20(paymentToken);
+                    uint256 allowance = paymentTokenInstance.allowance(
+                        msg.sender,
+                        address(this)
+                    );
+                    uint256 buyerBalance = paymentTokenInstance.balanceOf(
+                        msg.sender
+                    );
+                    if (allowance < price || buyerBalance < price) {
+                        result = false;
+                    } else {
+                        result = true;
+                    }
                 } else {
-                    result = true;
+                    preferredTokenInstance = ERC20(preferredToken);
+                    uint256 expectedEthAmount = convertToEth(
+                        preferredTokenInstance,
+                        price
+                    );
+
+                    paymentTokenInstance = ERC20(paymentToken);
+                    uint256 expectedPaymentAmount = convertFromEth(
+                        paymentTokenInstance,
+                        expectedEthAmount
+                    );
+
+                    uint256 allowance = paymentTokenInstance.allowance(
+                        msg.sender,
+                        address(this)
+                    );
+                    uint256 buyerBalance = paymentTokenInstance.balanceOf(
+                        msg.sender
+                    );
+                    if (
+                        allowance < expectedPaymentAmount ||
+                        buyerBalance < expectedPaymentAmount
+                    ) {
+                        result = false;
+                    } else {
+                        result = true;
+                    }
                 }
             }
         }
@@ -333,45 +436,96 @@ contract NftMarketplace {
     )
         external
         payable
+        nonReentrant
         tokenListed(nftAddress, tokenId)
         paymentSupported(paymentToken)
         strictPaymentChecked(nftAddress, tokenId, paymentToken)
     {
         Listing memory listing = s_listingMap[nftAddress][tokenId];
+
+        address preferredPayment = listing.preferredPayment;
         uint256 nftPrice = listing.price;
         bool strictPayment = listing.strictPayment;
-        bool paymentValid = verifyPayment(
+        bool paymentMatch = paymentToken == preferredPayment;
+
+        bool isPaymentValid = verifyPayment(
             msg.value,
             strictPayment,
             paymentToken,
+            preferredPayment,
             nftPrice
         );
-        if (!paymentValid) {
+        if (!isPaymentValid) {
             revert NftMarketplace__InvalidPayment(
                 paymentToken,
                 msg.sender,
                 nftPrice
             );
         }
-        uint256 price = listing.price;
-        if (strictPayment) {
+
+        uint256 paymentAmount;
+
+        ERC20 paymentTokenInstance;
+        ERC20 preferredTokenInstance;
+
+        if (strictPayment || paymentMatch) {
             if (paymentToken == address(0)) {
                 // ETH
                 s_proceeds[listing.seller][address(0)] += msg.value;
+                paymentAmount = msg.value;
             } else {
                 // ERC20
-                ERC20 paymentTokenInstance = ERC20(paymentToken);
+                paymentTokenInstance = ERC20(paymentToken);
                 paymentTokenInstance.transferFrom(
                     msg.sender,
                     address(this),
-                    price
+                    nftPrice
                 );
-                s_proceeds[listing.seller][paymentToken] += price;
+
+                s_proceeds[listing.seller][paymentToken] += nftPrice;
+                paymentAmount = nftPrice;
             }
         } else {
-            address preferredPayment = listing.preferredPayment;
-            bool paymentMatch = paymentToken == preferredPayment;
+            if (paymentToken == address(0)) {
+                s_proceeds[listing.seller][address(0)] += msg.value;
+                paymentAmount = msg.value;
+            } else {
+                preferredTokenInstance = ERC20(preferredPayment);
+                uint256 convertedValue = convertToEth(
+                    preferredTokenInstance,
+                    nftPrice
+                );
+
+                paymentTokenInstance = ERC20(paymentToken);
+                uint256 expectedPaymentAmount = convertFromEth(
+                    paymentTokenInstance,
+                    convertedValue
+                );
+                paymentTokenInstance.transferFrom(
+                    msg.sender,
+                    address(this),
+                    expectedPaymentAmount
+                );
+
+                s_proceeds[listing.seller][address(0)] += convertedValue;
+                paymentAmount = expectedPaymentAmount;
+            }
         }
+
+        removeListing(nftAddress, tokenId);
+        IERC721(nftAddress).safeTransferFrom(
+            listing.seller,
+            msg.sender,
+            tokenId
+        );
+
+        emit TokenBought(
+            msg.sender,
+            nftAddress,
+            tokenId,
+            paymentToken,
+            paymentAmount
+        );
     }
 
     function checkPaymentSupport(
