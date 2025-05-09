@@ -91,3 +91,17 @@
             locked = false;
         }
         ```
+***
+## Updating
+- Whether to check if update is needed
+    - Gas consideration
+        - It is natural to think that if checked and no write needed, it would save gas, but sometimes reading values and running logic might overweight
+    - Logic consideration
+        - If emitting event(like in this case), I should check to prevent log spamming
+***
+## Problems
+- [ ] Compiling
+    - `CompilerError: Stack too deep.`
+        - [More on the error](https://web.archive.org/web/20161015173410/http://james.carlyle.space/2015/07/22/solidity-stack-too-deep/)
+        - [Enabling optimizer](https://stackoverflow.com/questions/70310087/how-do-i-resolve-this-hardhat-compilererror-stack-too-deep-when-compiling-inli)
+            - [ ] What does optimizer do and what is `viaIR`?
