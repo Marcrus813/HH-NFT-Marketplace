@@ -16,18 +16,47 @@ const COINMARKETCAP_API_KEY =
 module.exports = {
     solidity: {
         compilers: [
-            { version: "0.8.10" },
-            { version: "0.8.19" },
-            { version: "0.8.27" },
-            { version: "0.7.5" },
-        ],
-        settings: {
-            optimizer: {
-                enabled: true,
-                runs: 100
+            {
+                version: "0.8.10",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 100,
+                    },
+                    viaIR: true,
+                },
             },
-            viaIR: true
-        }
+            {
+                version: "0.8.19",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 100,
+                    },
+                    viaIR: true,
+                },
+            },
+            {
+                version: "0.8.27",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 100,
+                    },
+                    viaIR: true,
+                },
+            },
+            {
+                version: "0.7.5",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 100,
+                    },
+                    viaIR: true,
+                },
+            },
+        ],
     },
     networks: {
         hardhat: {

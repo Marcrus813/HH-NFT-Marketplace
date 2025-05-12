@@ -104,4 +104,11 @@
     - `CompilerError: Stack too deep.`
         - [More on the error](https://web.archive.org/web/20161015173410/http://james.carlyle.space/2015/07/22/solidity-stack-too-deep/)
         - [Enabling optimizer](https://stackoverflow.com/questions/70310087/how-do-i-resolve-this-hardhat-compilererror-stack-too-deep-when-compiling-inli)
-            - [ ] What does optimizer do and what is `viaIR`?
+            - [ ] What does optimizer do and what is [`viaIR`](https://soliditylang.org/blog/2024/07/12/a-closer-look-at-via-ir/)?
+                - Reduce gas consumption(eliminate redundant operations or combining logic)
+                - Minimize memory and stack usage
+                - Reuse variables when possible
+                - Why it works here?
+                    - `viaIR`
+                        - `IR`: Intermediate Representation
+                        - Transforms Solidity into intermediate form -> Applies deeper optimization

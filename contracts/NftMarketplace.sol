@@ -136,7 +136,7 @@ contract NftMarketplace is ReentrancyGuard {
         s_supportedPayments.push(WETH_ADDRESS); // WETH
         for (uint i = 0; i < supportedPayments.length; i++) {
             address tokenAddress = supportedPayments[i];
-            address tokenPriceFeed = getPriceFeedForPayment(tokenAddress);
+            address tokenPriceFeed = initializePriceFeed(tokenAddress);
             s_priceFeeds[tokenAddress] = tokenPriceFeed;
         }
     }
@@ -472,16 +472,12 @@ contract NftMarketplace is ReentrancyGuard {
     function checkPaymentSupport(
         address tokenAddress
     ) public view returns (bool result) {
-        address priceFeedAddress = s_priceFeeds[tokenAddress];
-        result = priceFeedAddress != address(0);
-    }
-
-    function getSupportedPayments()
-        public
-        view
-        returns (address[] memory result)
-    {
-        result = s_supportedPayments;
+        if (tokenAddress == WETH_ADDRESS) {
+            result = true;
+        } else {
+            address priceFeedAddress = s_priceFeeds[tokenAddress];
+            result = priceFeedAddress != address(0);
+        }
     }
 
     function buyToken(
@@ -711,32 +707,44 @@ contract NftMarketplace is ReentrancyGuard {
         }
     }
 
-    function getPriceFeedForPayment(
+    function getSupportedPayments()
+        public
+        view
+        returns (address[] memory result)
+    {
+        result = s_supportedPayments;
+    }
+
+    function initializePriceFeed(
         address payment
     ) private pure returns (address result) {
         address tokenPriceFeed;
         if (payment == 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) {
             // USDC
-            tokenPriceFeed == 0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
+            tokenPriceFeed = 0x986b5E1e1755e3C2440e960477f25201B0a8bbD4;
         } else if (payment == 0x6B175474E89094C44Da98b954EedeAC495271d0F) {
             // DAI
-            tokenPriceFeed == 0x773616E4d11A78F511299002da57A0a94577F1f4;
+            tokenPriceFeed = 0x773616E4d11A78F511299002da57A0a94577F1f4;
         } else if (payment == 0x514910771AF9Ca656af840dff83E8264EcF986CA) {
             // LINK
-            tokenPriceFeed == 0xDC530D9457755926550b59e8ECcdaE7624181557;
+            tokenPriceFeed = 0xDC530D9457755926550b59e8ECcdaE7624181557;
         } else if (payment == 0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984) {
             // UNI
-            tokenPriceFeed == 0xD6aA3D25116d8dA79Ea0246c4826EB951872e02e;
+            tokenPriceFeed = 0xD6aA3D25116d8dA79Ea0246c4826EB951872e02e;
         } else if (payment == 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599) {
             // wBTC
-            tokenPriceFeed == 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
+            tokenPriceFeed = 0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23;
         } else if (payment == 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2) {
             // wETH
-            tokenPriceFeed == address(0);
+            tokenPriceFeed = address(0);
         } else {
             revert NftMarketplace__PaymentNotSupported(payment);
         }
         result = tokenPriceFeed;
+    }
+
+    function getPriceFeed(address token) public view returns (address result) {
+        result = s_priceFeeds[token];
     }
 
     function getListings(
