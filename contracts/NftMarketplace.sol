@@ -8,6 +8,8 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interf
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+import "hardhat/console.sol";
+
 error NftMarketplace__PriceIsZero();
 error NftMarketplace__NotApprovedForMarketplace(
     address nftAddress,
@@ -263,60 +265,49 @@ contract NftMarketplace is ReentrancyGuard {
         delete s_listingMap[nftAddress][tokenId];
     }
 
+    // TODO: Limit to internal and view after testing done
     function convertToEth(
         ERC20 paymentToken,
         uint256 amount
-    )
-        private
-        view
-        paymentSupported(address(paymentToken))
-        returns (uint256 result)
-    {
+    ) public view returns (uint256 result) {
+        bool isPaymentSupported = checkPaymentSupport(address(paymentToken));
+        if (!isPaymentSupported) {
+            revert NftMarketplace__PaymentNotSupported(address(paymentToken));
+        }
         if (address(paymentToken) != WETH_ADDRESS) {
             AggregatorV3Interface priceFeed = AggregatorV3Interface(
                 s_priceFeeds[address(paymentToken)]
             );
-            uint8 priceFeedDecimals = priceFeed.decimals();
             (, int256 answer, , , ) = priceFeed.latestRoundData();
-
             uint8 tokenDecimals = paymentToken.decimals();
 
-            // Convert to 18 decimals
-            uint256 normalizedAmount = amount * (10 ** (18 - tokenDecimals));
-
-            result =
-                (answer.abs() * normalizedAmount) /
-                (10 ** priceFeedDecimals);
+            // 1 token = answer => 1 * 10 ** tokenDecimal = answer * 10 ** tokenDecimal
+            result = (uint256(answer) * amount) / (10 ** tokenDecimals);
         } else {
             result = amount;
         }
     }
 
+    // TODO: Limit to internal and view after testing done
     function convertFromEth(
         ERC20 targetToken,
         uint256 ethAmount
-    )
-        public
-        view
-        paymentSupported(address(targetToken))
-        returns (uint256 result)
-    {
+    ) public view returns (uint256 result) {
+        bool isPaymentSupported = checkPaymentSupport(address(targetToken));
+        if (!isPaymentSupported) {
+            revert NftMarketplace__PaymentNotSupported(address(targetToken));
+        }
+
         if (address(targetToken) != WETH_ADDRESS) {
             AggregatorV3Interface priceFeed = AggregatorV3Interface(
                 s_priceFeeds[address(targetToken)]
             );
-            uint8 priceFeedDecimals = priceFeed.decimals();
             (, int256 answer, , , ) = priceFeed.latestRoundData();
 
             uint8 tokenDecimals = targetToken.decimals();
 
-            // Calculate the amount in token's decimals
-            result =
-                (ethAmount * (10 ** priceFeedDecimals)) /
-                uint256(answer.abs());
-
-            // Adjust from 18 decimals to token decimals
-            result = result / (10 ** (18 - tokenDecimals));
+            // 1 token = answer => 1 * 10 ** tokenDecimal = answer * 10 ** tokenDecimal
+            result = (ethAmount * 10 ** tokenDecimals) / uint256(answer);
         } else {
             result = ethAmount;
         }
@@ -364,13 +355,14 @@ contract NftMarketplace is ReentrancyGuard {
      * @return result True if the payment is valid, false otherwise
      * @dev This is used after `strictPaymentChecked` modifier, so if strict payment, then the tokens are matched
      */
+    // TODO: Limit to internal and view after testing
     function verifyPayment(
         uint256 msgValue,
         bool strictPayment,
         address paymentToken,
         address preferredToken,
         uint256 price
-    ) internal view returns (bool result) {
+    ) public view returns (bool result) {
         ERC20 paymentTokenInstance;
         ERC20 preferredTokenInstance;
 

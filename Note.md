@@ -1,4 +1,3 @@
-
 # NFT marketplace
 
 ---
@@ -68,17 +67,22 @@
                     - Use a new mapping `s_nftAddressTracked`, every address has a default value of false, when listed set the value to true and push to `address[]`, so in future listings, `tracked` will be true and address won't be pushed, same with token IDs just with an extra layer of mapping
                         - Problems
                             - With this approach, when buying will have to check and clear corresponding record, might cost a lot of gas
+
 - Pull over push(best practice)
     - To **Shift the risk associated with transferring ether to the user**
     - Always have user withdraw instead of sending them
 
-***
+---
+
 ## Reentrancy Attack
+
 - One of most common attacks, amongst Oracle attack
 - See sub lesson for example
 - Ways to prevent
+
     - **ALWAYS** do state changes first, then transfer assets
     - Mutex locks, E.g.: OpenZeppelin: ReentrancyGuard
+
         ```solidity
         bool locked;
         function transaction() {
@@ -91,15 +95,26 @@
             locked = false;
         }
         ```
-***
+
+---
+
 ## Updating
+
 - Whether to check if update is needed
     - Gas consideration
         - It is natural to think that if checked and no write needed, it would save gas, but sometimes reading values and running logic might overweight
     - Logic consideration
         - If emitting event(like in this case), I should check to prevent log spamming
-***
+
+---
+
 ## Problems
+
+- [ ] `hardhat/console`
+
+    - ~~Don't know why, but log does not work with modifiers, this is a conclusion based on test: it works with `checkPaymentSupport`, but not `convertToEth`, then removed modifier then works~~
+        - Turns out there's something wrong with function, possibly it takes ERC20 as param, but we are using an address
+
 - [ ] Compiling
     - `CompilerError: Stack too deep.`
         - [More on the error](https://web.archive.org/web/20161015173410/http://james.carlyle.space/2015/07/22/solidity-stack-too-deep/)
@@ -112,3 +127,7 @@
                     - `viaIR`
                         - `IR`: Intermediate Representation
                         - Transforms Solidity into intermediate form -> Applies deeper optimization
+- [ ] Converting prices
+    - Key points
+        - Answer: 404515560157583 means 1 USDC = 404515560157583 wei
+        - `decimals` from price feed returns 18, so probably the decimals of the target token

@@ -66,6 +66,10 @@ module.exports = {
             },
         },
         localhost: {
+            chainId: 31337,
+            forking: {
+                url: MAINNET_RPC_URL,
+            },
             ignition: {
                 blockPollingInterval: 1_000,
                 requiredConfirmations: 1,
