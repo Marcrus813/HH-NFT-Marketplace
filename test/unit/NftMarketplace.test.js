@@ -9,13 +9,12 @@ const NftMarketplaceModules = require("../../ignition/modules/00-NftMarketplace"
 
 const {
     aggregatorV3InterfaceAbi,
-} = require("../../utils/abis/aggregatorV3Interface");
-const { JsonRpcProvider } = require("ethers");
-const { Contract } = require("ethers");
+} = require("../../utils/blockchain/abis/aggregatorV3Interface");
+
+const { supplyToken } = require("../../utils/blockchain/mainnetMock");
+const { WhaleAddress } = require("../../configs/contracts/whaleAddresses");
 
 describe("NftMarketplace", () => {
-    const provider = new JsonRpcProvider("http://localhost:8545");
-
     let NftMarketplace;
     let NftMarketplaceAddress;
     let deployer;
@@ -28,6 +27,8 @@ describe("NftMarketplace", () => {
     const linkAddress = supportedTokens[2];
     const uniAddress = supportedTokens[3];
     const wBtcAddress = supportedTokens[4];
+    const wEthAddress = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
+    const zeroAddress = "0x0000000000000000000000000000000000000000";
 
     async function deployFixture() {
         const { NftMarketplace: NftMarketplaceDeployment } =
@@ -120,7 +121,7 @@ describe("NftMarketplace", () => {
             expect(wBtcFeed).to.be.equals(properWbtcFeed);
         });
 
-        describe("Token conversion", () => {
+        describe("Token conversion(Tested with visibility as PUBLIC)", () => {
             describe("Convert to ETH", () => {
                 it("Should correctly convert USDC to ETH", async () => {
                     const feedAddress =
@@ -139,22 +140,299 @@ describe("NftMarketplace", () => {
                     );
                     expect(result).to.be.equals(feedAnswer);
                 });
-                it("Should correctly convert DAI to ETH", async () => {});
-                it("Should correctly convert LINK to ETH", async () => {});
-                it("Should correctly convert UNI to ETH", async () => {});
-                it("Should correctly convert WBTC to ETH", async () => {});
+                it("Should correctly convert DAI to ETH", async () => {
+                    const feedAddress =
+                        await NftMarketplace.getPriceFeed(daiAddress);
+                    const priceFeed = await ethers.getContractAt(
+                        aggregatorV3InterfaceAbi,
+                        feedAddress,
+                        deployer,
+                    );
+                    const { answer: feedAnswer } =
+                        await priceFeed.latestRoundData();
+
+                    const result = await NftMarketplace.convertToEth(
+                        daiAddress,
+                        BigInt(1e18),
+                    );
+                    expect(result).to.be.equals(feedAnswer);
+                });
+                it("Should correctly convert LINK to ETH", async () => {
+                    it("Should correctly convert DAI to ETH", async () => {
+                        const feedAddress =
+                            await NftMarketplace.getPriceFeed(linkAddress);
+                        const priceFeed = await ethers.getContractAt(
+                            aggregatorV3InterfaceAbi,
+                            feedAddress,
+                            deployer,
+                        );
+                        const { answer: feedAnswer } =
+                            await priceFeed.latestRoundData();
+
+                        const result = await NftMarketplace.convertToEth(
+                            linkAddress,
+                            BigInt(1e18),
+                        );
+                        expect(result).to.be.equals(feedAnswer);
+                    });
+                });
+                it("Should correctly convert UNI to ETH", async () => {
+                    it("Should correctly convert DAI to ETH", async () => {
+                        const feedAddress =
+                            await NftMarketplace.getPriceFeed(uniAddress);
+                        const priceFeed = await ethers.getContractAt(
+                            aggregatorV3InterfaceAbi,
+                            feedAddress,
+                            deployer,
+                        );
+                        const { answer: feedAnswer } =
+                            await priceFeed.latestRoundData();
+
+                        const result = await NftMarketplace.convertToEth(
+                            uniAddress,
+                            BigInt(1e18),
+                        );
+                        expect(result).to.be.equals(feedAnswer);
+                    });
+                });
+                it("Should correctly convert WBTC to ETH", async () => {
+                    it("Should correctly convert DAI to ETH", async () => {
+                        const feedAddress =
+                            await NftMarketplace.getPriceFeed(wBtcAddress);
+                        const priceFeed = await ethers.getContractAt(
+                            aggregatorV3InterfaceAbi,
+                            feedAddress,
+                            deployer,
+                        );
+                        const { answer: feedAnswer } =
+                            await priceFeed.latestRoundData();
+
+                        const result = await NftMarketplace.convertToEth(
+                            wBtcAddress,
+                            BigInt(1e8),
+                        );
+                        expect(result).to.be.equals(feedAnswer);
+                    });
+                });
             });
 
             describe("Convert from ETH", () => {
-                it("Should correctly convert ETH to USDC", async () => {});
-                it("Should correctly convert ETH to DAI", async () => {});
-                it("Should correctly convert ETH to LINK", async () => {});
-                it("Should correctly convert ETH to UNI", async () => {});
-                it("Should correctly convert ETH to WBTC", async () => {});
+                it("Should correctly convert ETH to USDC", async () => {
+                    const feedAddress =
+                        await NftMarketplace.getPriceFeed(usdcAddress);
+                    const priceFeed = await ethers.getContractAt(
+                        aggregatorV3InterfaceAbi,
+                        feedAddress,
+                        deployer,
+                    );
+                    const { answer: feedAnswer } =
+                        await priceFeed.latestRoundData();
+
+                    const result = await NftMarketplace.convertFromEth(
+                        usdcAddress,
+                        feedAnswer,
+                    );
+                    expect(result).to.be.equals(BigInt(1e6));
+                });
+                it("Should correctly convert ETH to DAI", async () => {
+                    const feedAddress =
+                        await NftMarketplace.getPriceFeed(daiAddress);
+                    const priceFeed = await ethers.getContractAt(
+                        aggregatorV3InterfaceAbi,
+                        feedAddress,
+                        deployer,
+                    );
+                    const { answer: feedAnswer } =
+                        await priceFeed.latestRoundData();
+
+                    const result = await NftMarketplace.convertFromEth(
+                        daiAddress,
+                        feedAnswer,
+                    );
+                    expect(result).to.be.equals(BigInt(1e18));
+                });
+                it("Should correctly convert ETH to LINK", async () => {
+                    const feedAddress =
+                        await NftMarketplace.getPriceFeed(daiAddress);
+                    const priceFeed = await ethers.getContractAt(
+                        aggregatorV3InterfaceAbi,
+                        feedAddress,
+                        deployer,
+                    );
+                    const { answer: feedAnswer } =
+                        await priceFeed.latestRoundData();
+
+                    const result = await NftMarketplace.convertFromEth(
+                        daiAddress,
+                        feedAnswer,
+                    );
+                    expect(result).to.be.equals(BigInt(1e18));
+                });
+                it("Should correctly convert ETH to UNI", async () => {
+                    const feedAddress =
+                        await NftMarketplace.getPriceFeed(uniAddress);
+                    const priceFeed = await ethers.getContractAt(
+                        aggregatorV3InterfaceAbi,
+                        feedAddress,
+                        deployer,
+                    );
+                    const { answer: feedAnswer } =
+                        await priceFeed.latestRoundData();
+
+                    const result = await NftMarketplace.convertFromEth(
+                        uniAddress,
+                        feedAnswer,
+                    );
+                    expect(result).to.be.equals(BigInt(1e18));
+                });
+                it("Should correctly convert ETH to WBTC", async () => {
+                    const feedAddress =
+                        await NftMarketplace.getPriceFeed(wBtcAddress);
+                    const priceFeed = await ethers.getContractAt(
+                        aggregatorV3InterfaceAbi,
+                        feedAddress,
+                        deployer,
+                    );
+                    const { answer: feedAnswer } =
+                        await priceFeed.latestRoundData();
+
+                    const result = await NftMarketplace.convertFromEth(
+                        wBtcAddress,
+                        feedAnswer,
+                    );
+                    expect(result).to.be.equals(BigInt(1e8));
+                });
             });
         });
 
-        describe("Verify payment", () => {});
+        describe("Verify payment(Tested with visibility as PUBLIC)", () => {
+            async function supplyTokensToAccounts() {
+                const usdcValidAccount = clientAccounts[0];
+                const daiValidAccount = clientAccounts[1];
+                const linkValidAccount = clientAccounts[2];
+                const uniValidAccount = clientAccounts[3];
+                const wBtcValidAccount = clientAccounts[4];
+                const wEthValidAccount = clientAccounts[5];
+
+                await supplyToken(
+                    usdcAddress,
+                    WhaleAddress[usdcAddress],
+                    usdcValidAccount,
+                    BigInt(10_000_000_000),
+                );
+                await supplyToken(
+                    daiAddress,
+                    WhaleAddress[daiAddress],
+                    daiValidAccount,
+                    BigInt(10000e18),
+                );
+                await supplyToken(
+                    linkAddress,
+                    WhaleAddress[linkAddress],
+                    linkValidAccount,
+                    BigInt(10000e18),
+                );
+                await supplyToken(
+                    uniAddress,
+                    WhaleAddress[uniAddress],
+                    uniValidAccount,
+                    BigInt(10000e18),
+                );
+                await supplyToken(
+                    wBtcAddress,
+                    WhaleAddress[wBtcAddress],
+                    wBtcValidAccount,
+                    BigInt(10000e8),
+                );
+                await supplyToken(
+                    wEthAddress,
+                    WhaleAddress[wEthAddress],
+                    wEthValidAccount,
+                    BigInt(10000e18),
+                );
+            }
+
+            beforeEach(async () => {
+                await supplyTokensToAccounts();
+            });
+            describe("Strict payment", () => {
+                it("Should reject when payment does not match preferred", async () => {});
+                describe("Supplying ETH", () => {
+                    it("Should return false when not enough sent", async () => {
+                        const targetPrice = ethers.parseEther("0.01");
+                        const value = ethers.parseEther("0.009");
+                        const paymentToken = zeroAddress;
+                    });
+                    it("Should return true when enough sent", async () => {});
+                });
+                describe("Supplying wETH", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying USDC", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying DAI", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying LINK", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying UNI", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying wBTC", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+            });
+            describe("Non-strict payment", () => {
+                describe("Supplying ETH", () => {
+                    it("Should return false when not enough sent", async () => {});
+                    it("Should return true when enough sent", async () => {});
+                });
+                describe("Supplying wETH", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying USDC", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying DAI", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying LINK", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying UNI", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+                describe("Supplying wBTC", () => {
+                    it("Should return false when buyer has insufficient balance", async () => {});
+                    it("Should return false when Market has insufficient allowance", async () => {});
+                    it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                });
+            });
+        });
     });
 
     describe("Deployment", () => {
