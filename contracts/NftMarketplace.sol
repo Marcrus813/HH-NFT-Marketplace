@@ -280,9 +280,15 @@ contract NftMarketplace is ReentrancyGuard {
             );
             (, int256 answer, , , ) = priceFeed.latestRoundData();
             uint8 tokenDecimals = paymentToken.decimals();
+            uint8 feedDecimals = priceFeed.decimals();
 
-            // 1 token = answer => 1 * 10 ** tokenDecimal = answer * 10 ** tokenDecimal
-            result = (uint256(answer) * amount) / (10 ** tokenDecimals);
+            uint256 scaledAmount = uint256(answer) * amount;
+
+            /**
+             * (scaledAmount * 1e18): Result in wei
+             * Then normalize against both token and feed decimals
+             */
+            result = (scaledAmount * 1e18) / (10 ** (tokenDecimals + feedDecimals));
         } else {
             result = amount;
         }
@@ -305,9 +311,13 @@ contract NftMarketplace is ReentrancyGuard {
             (, int256 answer, , , ) = priceFeed.latestRoundData();
 
             uint8 tokenDecimals = targetToken.decimals();
+            uint8 feedDecimals = priceFeed.decimals();
 
-            // 1 token = answer => 1 * 10 ** tokenDecimal = answer * 10 ** tokenDecimal
-            result = (ethAmount * 10 ** tokenDecimals) / uint256(answer);
+            /**
+             * (answer * 1e18): Token normalized by eth decimals
+             * Then normalize against both token and feed decimals
+             */
+            result = (ethAmount * 10 ** (tokenDecimals + feedDecimals)) / (uint256(answer) * 1e18);
         } else {
             result = ethAmount;
         }
@@ -357,6 +367,7 @@ contract NftMarketplace is ReentrancyGuard {
      */
     // TODO: Limit to internal and view after testing
     function verifyPayment(
+        address buyer,
         uint256 msgValue,
         bool strictPayment,
         address paymentToken,
@@ -380,12 +391,10 @@ contract NftMarketplace is ReentrancyGuard {
                 // ERC20
                 paymentTokenInstance = ERC20(paymentToken);
                 uint256 allowance = paymentTokenInstance.allowance(
-                    msg.sender,
+                    buyer,
                     address(this)
                 );
-                uint256 buyerBalance = paymentTokenInstance.balanceOf(
-                    msg.sender
-                );
+                uint256 buyerBalance = paymentTokenInstance.balanceOf(buyer);
                 if (allowance < price || buyerBalance < price) {
                     result = false;
                 } else {
@@ -417,11 +426,11 @@ contract NftMarketplace is ReentrancyGuard {
                 if (paymentMatch) {
                     paymentTokenInstance = ERC20(paymentToken);
                     uint256 allowance = paymentTokenInstance.allowance(
-                        msg.sender,
+                        buyer,
                         address(this)
                     );
                     uint256 buyerBalance = paymentTokenInstance.balanceOf(
-                        msg.sender
+                        buyer
                     );
                     if (allowance < price || buyerBalance < price) {
                         result = false;
@@ -429,32 +438,58 @@ contract NftMarketplace is ReentrancyGuard {
                         result = true;
                     }
                 } else {
-                    preferredTokenInstance = ERC20(preferredToken);
-                    uint256 expectedEthAmount = convertToEth(
-                        preferredTokenInstance,
-                        price
-                    );
+                    if (preferredToken != address(0)) {
+                        // Not ETH
+                        preferredTokenInstance = ERC20(preferredToken);
+                        uint256 expectedEthAmount = convertToEth(
+                            preferredTokenInstance,
+                            price
+                        );
 
-                    paymentTokenInstance = ERC20(paymentToken);
-                    uint256 expectedPaymentAmount = convertFromEth(
-                        paymentTokenInstance,
-                        expectedEthAmount
-                    );
+                        paymentTokenInstance = ERC20(paymentToken);
+                        uint256 expectedPaymentAmount = convertFromEth(
+                            paymentTokenInstance,
+                            expectedEthAmount
+                        );
 
-                    uint256 allowance = paymentTokenInstance.allowance(
-                        msg.sender,
-                        address(this)
-                    );
-                    uint256 buyerBalance = paymentTokenInstance.balanceOf(
-                        msg.sender
-                    );
-                    if (
-                        allowance < expectedPaymentAmount ||
-                        buyerBalance < expectedPaymentAmount
-                    ) {
-                        result = false;
+                        uint256 allowance = paymentTokenInstance.allowance(
+                            buyer,
+                            address(this)
+                        );
+                        uint256 buyerBalance = paymentTokenInstance.balanceOf(
+                            buyer
+                        );
+                        if (
+                            allowance < expectedPaymentAmount ||
+                            buyerBalance < expectedPaymentAmount
+                        ) {
+                            result = false;
+                        } else {
+                            result = true;
+                        }
                     } else {
-                        result = true;
+                        // ETH
+                        paymentTokenInstance = ERC20(paymentToken);
+                        uint256 expectedPaymentAmount = convertFromEth(
+                            paymentTokenInstance,
+                            price
+                        );
+
+                        uint256 allowance = paymentTokenInstance.allowance(
+                            buyer,
+                            address(this)
+                        );
+                        uint256 buyerBalance = paymentTokenInstance.balanceOf(
+                            buyer
+                        );
+                        if (
+                            allowance < expectedPaymentAmount ||
+                            buyerBalance < expectedPaymentAmount
+                        ) {
+                            result = false;
+                        } else {
+                            result = true;
+                        }
                     }
                 }
             }
@@ -464,7 +499,7 @@ contract NftMarketplace is ReentrancyGuard {
     function checkPaymentSupport(
         address tokenAddress
     ) public view returns (bool result) {
-        if (tokenAddress == WETH_ADDRESS) {
+        if (tokenAddress == WETH_ADDRESS || tokenAddress == address(0)) {
             result = true;
         } else {
             address priceFeedAddress = s_priceFeeds[tokenAddress];
@@ -501,6 +536,7 @@ contract NftMarketplace is ReentrancyGuard {
         bool paymentMatch = paymentToken == preferredPayment;
 
         bool isPaymentValid = verifyPayment(
+            msg.sender,
             msg.value,
             strictPayment,
             paymentToken,

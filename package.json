@@ -23,8 +23,9 @@
         "typechain": "^8.3.0"
     },
     "scripts": {
-        "h-compile": "hardhat compile",
         "h-clean": "hardhat clean",
+        "h-wipe": "hardhat ignition wipe",
+        "h-compile": "hardhat compile",
         "h-test": "hardhat test",
         "h-test-s": "hardhat test --network sepolia",
         "h-node": "hardhat node",

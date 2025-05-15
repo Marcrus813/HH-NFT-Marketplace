@@ -110,12 +110,12 @@
 
 ## Problems
 
-- [ ] `hardhat/console`
+- [x] `hardhat/console`
 
     - ~~Don't know why, but log does not work with modifiers, this is a conclusion based on test: it works with `checkPaymentSupport`, but not `convertToEth`, then removed modifier then works~~
         - Turns out there's something wrong with function, possibly it takes ERC20 as param, but we are using an address
 
-- [ ] Compiling
+- [x] Compiling
     - `CompilerError: Stack too deep.`
         - [More on the error](https://web.archive.org/web/20161015173410/http://james.carlyle.space/2015/07/22/solidity-stack-too-deep/)
         - [Enabling optimizer](https://stackoverflow.com/questions/70310087/how-do-i-resolve-this-hardhat-compilererror-stack-too-deep-when-compiling-inli)
@@ -127,7 +127,17 @@
                     - `viaIR`
                         - `IR`: Intermediate Representation
                         - Transforms Solidity into intermediate form -> Applies deeper optimization
-- [ ] Converting prices
+- [x] Converting prices
     - Key points
         - Answer: 404515560157583 means 1 USDC = 404515560157583 wei
-        - `decimals` from price feed returns 18, so probably the decimals of the target token
+        - `decimals` from price feed `USDC / ETH` returns `18` while decimals of USDC is 6, ~~so probably the decimals of the target token~~ here it is the decimals of the price feed
+            - Take `wBTC / ETH` for example, the decimal is 8, same as `wBTC`, the result would also be in 8 decimals
+
+## Testing
+
+- Fork
+    - When using fork, to give the local accounts, need to use hardhat ethers to personate the accounts and transfer funds to the local test accounts(or just use the accounts, but we will need to instantiate the account first)
+    - When sending funds or tokens, there may be scenarios where the original account does not have enough ETH to pay gas:
+      `ProviderError: Sender doesn't have enough funds to send tx. The max upfront cost is: 79949756940000000 and the sender's balance is: 63297255814439858.`
+        - When sending ETH, the whale address might be a contract, so when there's no receive function in it, sending it eth will go wrong
+        - It's difficult to find all the EOA addresses owning the token, so in the end I used a Binance account: `0x28C6c06298d514Db089934071355E5743bf21d60`
