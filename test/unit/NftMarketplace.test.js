@@ -14,10 +14,15 @@ const {
 const {
     supplyToken,
     approveAllowance,
-    getErc20Balance,
-    getErc20Allowance,
 } = require("../../utils/blockchain/mainnetMock");
-const { WhaleAddress } = require("../../configs/contracts/whaleAddresses");
+const {
+    ERC20WhaleAddress,
+} = require("../../configs/contracts/erc20WhaleAddress");
+
+const {
+    tokenContracts: NFTTokens,
+    getTokenInfo,
+} = require("../../configs/contracts/nftAddress");
 
 describe("NftMarketplace", () => {
     let NftMarketplace;
@@ -35,6 +40,9 @@ describe("NftMarketplace", () => {
     const wEthAddress =
         "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2".toLowerCase();
     const zeroAddress = "0x0000000000000000000000000000000000000000";
+
+    const sxtAddress = "0xe6bfd33f52d82ccb5b37e16d3dd81f9ffdabb195";
+    const tetherAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7";
 
     async function deployFixture() {
         const { NftMarketplace: NftMarketplaceDeployment } =
@@ -92,12 +100,10 @@ describe("NftMarketplace", () => {
                 await NftMarketplace.checkPaymentSupport(wBtcAddress);
             expect(wBtcCheck).to.be.true;
 
-            const tetherAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7";
             const tetherCheck =
                 await NftMarketplace.checkPaymentSupport(tetherAddress);
             expect(tetherCheck).to.be.false;
 
-            const sxtAddress = "0xe6bfd33f52d82ccb5b37e16d3dd81f9ffdabb195";
             const sxtCheck =
                 await NftMarketplace.checkPaymentSupport(sxtAddress);
             expect(sxtCheck).to.be.false;
@@ -110,13 +116,19 @@ describe("NftMarketplace", () => {
                 supportedTokens.length + 1,
             );
             expect(
-                supportedPayments[supportedPayments.length - 1],
-            ).to.be.equals("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
-            expect(supportedPayments[0]).to.be.equals(usdcAddress);
-            expect(supportedPayments[1]).to.be.equals(daiAddress);
-            expect(supportedPayments[2]).to.be.equals(linkAddress);
-            expect(supportedPayments[3]).to.be.equals(uniAddress);
-            expect(supportedPayments[4]).to.be.equals(wBtcAddress);
+                supportedPayments[supportedPayments.length - 1].toLowerCase(),
+            ).to.be.equals(wEthAddress);
+            expect(supportedPayments[0].toLowerCase()).to.be.equals(
+                usdcAddress,
+            );
+            expect(supportedPayments[1].toLowerCase()).to.be.equals(daiAddress);
+            expect(supportedPayments[2].toLowerCase()).to.be.equals(
+                linkAddress,
+            );
+            expect(supportedPayments[3].toLowerCase()).to.be.equals(uniAddress);
+            expect(supportedPayments[4].toLowerCase()).to.be.equals(
+                wBtcAddress,
+            );
         });
 
         it("Should provide the correct price feeds", async () => {
@@ -153,7 +165,6 @@ describe("NftMarketplace", () => {
                         await priceFeed.latestRoundData();
 
                     const priceFeedDecimals = priceFeed.decimals();
-                    
 
                     const result = await NftMarketplace.convertToEth(
                         usdcAddress,
@@ -227,7 +238,9 @@ describe("NftMarketplace", () => {
                         wBtcAddress,
                         BigInt(1e8),
                     );
-                    expect(result).to.be.equals(feedAnswer);
+                    expect(result).to.be.equals(
+                        feedAnswer * BigInt(1e10) /** 18-8 */,
+                    );
                 });
             });
 
@@ -313,7 +326,7 @@ describe("NftMarketplace", () => {
 
                     const result = await NftMarketplace.convertFromEth(
                         wBtcAddress,
-                        feedAnswer,
+                        feedAnswer * BigInt(1e10), // 18(ETH decimal) - 8(price feed decimal)
                     );
                     expect(result).to.be.equals(BigInt(1e8));
                 });
@@ -345,39 +358,39 @@ describe("NftMarketplace", () => {
 
                 await supplyToken(
                     usdcAddress,
-                    WhaleAddress.get(usdcAddress),
+                    ERC20WhaleAddress.get(usdcAddress),
                     usdcValidAccount,
                     BigInt(10000e6),
                 );
                 await supplyToken(
                     daiAddress,
-                    WhaleAddress.get(daiAddress),
+                    ERC20WhaleAddress.get(daiAddress),
                     daiValidAccount,
                     BigInt(10000e18),
                 );
                 await supplyToken(
                     linkAddress,
-                    WhaleAddress.get(linkAddress),
+                    ERC20WhaleAddress.get(linkAddress),
                     linkValidAccount,
                     BigInt(10000e18),
                 );
                 await supplyToken(
                     uniAddress,
-                    WhaleAddress.get(uniAddress),
+                    ERC20WhaleAddress.get(uniAddress),
                     uniValidAccount,
                     BigInt(10000e18),
                 );
                 await supplyToken(
                     wBtcAddress,
-                    WhaleAddress.get(wBtcAddress),
+                    ERC20WhaleAddress.get(wBtcAddress),
                     wBtcValidAccount,
                     BigInt(100e8),
                 );
                 await supplyToken(
                     wEthAddress,
-                    WhaleAddress.get(wEthAddress),
+                    ERC20WhaleAddress.get(wEthAddress),
                     wEthValidAccount,
-                    BigInt(600e18),
+                    BigInt(500e18),
                 );
             }
 
@@ -1158,19 +1171,11 @@ describe("NftMarketplace", () => {
                         beforeEach(async () => {
                             preferredToken = wBtcAddress;
 
-                            const priceFeedAddress =
-                                await NftMarketplace.getPriceFeed(
-                                    preferredToken,
-                                );
-                            const priceFeed = await ethers.getContractAt(
-                                aggregatorV3InterfaceAbi,
-                                priceFeedAddress,
-                                deployer,
-                            );
-                            const { answer: feedAnswer } =
-                                await priceFeed.latestRoundData();
-                            value = feedAnswer;
                             targetPrice = BigInt(1e8); // 1 Token
+                            value = await NftMarketplace.convertToEth(
+                                wBtcAddress,
+                                targetPrice,
+                            );
                         });
                         it("Should return false when not enough sent", async () => {
                             value = value - 1n;
@@ -2482,53 +2487,656 @@ describe("NftMarketplace", () => {
                         value = 0;
                     });
                     describe("Preferred ETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = zeroAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount = targetPrice;
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wEthAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred USDC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = usdcAddress;
+                            targetPrice = BigInt(1e6);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred DAI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = daiAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred LINK", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = linkAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred UNI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = uniAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wBTC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wBtcAddress;
+                            targetPrice = BigInt(1e8);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = daiValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                 });
                 describe("Supplying LINK", () => {
@@ -2537,53 +3145,656 @@ describe("NftMarketplace", () => {
                         value = 0;
                     });
                     describe("Preferred ETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = zeroAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount = targetPrice;
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wEthAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred USDC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = usdcAddress;
+                            targetPrice = BigInt(1e6);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred DAI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = daiAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred LINK", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = linkAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred UNI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = uniAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wBTC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wBtcAddress;
+                            targetPrice = BigInt(1e8);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = linkValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                 });
                 describe("Supplying UNI", () => {
@@ -2592,53 +3803,656 @@ describe("NftMarketplace", () => {
                         value = 0;
                     });
                     describe("Preferred ETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = zeroAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount = targetPrice;
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wEthAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred USDC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = usdcAddress;
+                            targetPrice = BigInt(1e6);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred DAI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = daiAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred LINK", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = linkAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred UNI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = uniAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wBTC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wBtcAddress;
+                            targetPrice = BigInt(1e8);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = uniValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                 });
                 describe("Supplying wBTC", () => {
@@ -2647,53 +4461,656 @@ describe("NftMarketplace", () => {
                         value = 0;
                     });
                     describe("Preferred ETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = zeroAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount = targetPrice;
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wETH", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wEthAddress;
+                            targetPrice = ethers.parseEther("0.01");
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred USDC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = usdcAddress;
+                            targetPrice = BigInt(1e6);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred DAI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = daiAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred LINK", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = linkAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred UNI", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = uniAddress;
+                            targetPrice = BigInt(1e18);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                     describe("Preferred wBTC", () => {
-                        beforeEach(() => {});
-                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {});
-                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {});
-                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {});
+                        let minimalAllowance;
+
+                        beforeEach(async () => {
+                            preferredToken = wBtcAddress;
+                            targetPrice = BigInt(1e8);
+
+                            const expectedEthAmount =
+                                await NftMarketplace.convertToEth(
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            minimalAllowance =
+                                await NftMarketplace.convertFromEth(
+                                    paymentToken,
+                                    expectedEthAmount,
+                                );
+                        });
+                        it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has sufficient balance & market has insufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return false when buyer has insufficient balance & market has sufficient allowance", async () => {
+                            buyer = wEthValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.false;
+                        });
+                        it("Should return true when buyer has sufficient balance and Market has sufficient allowance", async () => {
+                            buyer = wBtcValidAccount;
+
+                            await approveAllowance(
+                                paymentToken,
+                                buyer.address,
+                                NftMarketplaceAddress,
+                                minimalAllowance,
+                            );
+
+                            const verification =
+                                await NftMarketplace.verifyPayment(
+                                    buyer,
+                                    value,
+                                    isStrictPayment,
+                                    paymentToken,
+                                    preferredToken,
+                                    targetPrice,
+                                );
+
+                            expect(verification).to.be.true;
+                        });
                     });
                 });
             });
@@ -2707,9 +5124,150 @@ describe("NftMarketplace", () => {
             });
         });
     });
-    describe("Initial state", () => {});
+    describe("Initial state", () => {
+        describe("Storage variables", () => {
+            it("Should have correct `s_supportedPayments`", async () => {
+                const supportedPayments =
+                    await NftMarketplace.getSupportedPayments();
+                expect(supportedPayments.length).to.be.equals(
+                    supportedTokens.length + 1,
+                );
+                expect(
+                    supportedPayments[
+                        supportedPayments.length - 1
+                    ].toLowerCase(),
+                ).to.be.equals(wEthAddress);
+                expect(supportedPayments[0].toLowerCase()).to.be.equals(
+                    usdcAddress,
+                );
+                expect(supportedPayments[1].toLowerCase()).to.be.equals(
+                    daiAddress,
+                );
+                expect(supportedPayments[2].toLowerCase()).to.be.equals(
+                    linkAddress,
+                );
+                expect(supportedPayments[3].toLowerCase()).to.be.equals(
+                    uniAddress,
+                );
+                expect(supportedPayments[4].toLowerCase()).to.be.equals(
+                    wBtcAddress,
+                );
+            });
+            it("Should provide the correct price feeds", async () => {
+                const properUsdcFeed =
+                    "0x986b5E1e1755e3C2440e960477f25201B0a8bbD4";
+                const properDaiFeed =
+                    "0x773616E4d11A78F511299002da57A0a94577F1f4";
+                const properLinkFeed =
+                    "0xDC530D9457755926550b59e8ECcdaE7624181557";
+                const properUniFeed =
+                    "0xD6aA3D25116d8dA79Ea0246c4826EB951872e02e";
+                const properWbtcFeed =
+                    "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23";
 
-    describe("Listing", () => {});
+                const usdcFeed = await NftMarketplace.getPriceFeed(usdcAddress);
+                const daiFeed = await NftMarketplace.getPriceFeed(daiAddress);
+                const linkFeed = await NftMarketplace.getPriceFeed(linkAddress);
+                const uniFeed = await NftMarketplace.getPriceFeed(uniAddress);
+                const wBtcFeed = await NftMarketplace.getPriceFeed(wBtcAddress);
+
+                expect(usdcFeed).to.be.equals(properUsdcFeed);
+                expect(daiFeed).to.be.equals(properDaiFeed);
+                expect(linkFeed).to.be.equals(properLinkFeed);
+                expect(uniFeed).to.be.equals(properUniFeed);
+                expect(wBtcFeed).to.be.equals(properWbtcFeed);
+            });
+            it("Should have empty `s_listingMap`", async () => {
+                const randomWallet = ethers.Wallet.createRandom();
+                const randomAddress = randomWallet.address;
+
+                const randomId = Math.floor(Math.random());
+                await expect(
+                    NftMarketplace.getListingInfo(randomAddress, randomId),
+                ).to.be.revertedWithCustomError(
+                    NftMarketplace,
+                    "NftMarketplace__TokenNotListed",
+                );
+            });
+            it("Should have empty `s_activeListings`", async () => {
+                const activeListings =
+                    await NftMarketplace.getActiveListingKeys();
+
+                expect(activeListings.length).to.be.equals(0);
+            });
+            it("Should have empty `s_listingPaddedIndex`", async () => {
+                const randomWallet = ethers.Wallet.createRandom();
+
+                const randomAddress = randomWallet.address;
+                const randomId = Math.floor(Math.random());
+
+                const paddedIndex = await NftMarketplace.getListingPaddedIndex(
+                    randomAddress,
+                    randomId,
+                );
+                expect(paddedIndex).to.be.equals(0);
+            });
+            it("Should have empty `s_proceeds`", async () => {
+                const randomWallet0 = ethers.Wallet.createRandom();
+                const randomAddress0 = randomWallet0.address;
+
+                const randomWallet1 = ethers.Wallet.createRandom();
+                const randomAddress1 = randomWallet1.address;
+
+                const proceeds = await NftMarketplace.getSupplierProceeds(
+                    randomAddress0,
+                    randomAddress1,
+                );
+                expect(proceeds).to.be.equals(0);
+            });
+        });
+    });
+
+    describe("Listing", () => {
+        let doodlesTokens, boredApeYachtClubTokens, lilPudgysTokens;
+
+        let doodleHolder = clientAccounts[0];
+        let boredApeYachtClubHolder = clientAccounts[1];
+        let lilPudgysHolder = clientAccounts[2];
+
+        beforeEach(async () => {
+            const tokenInfo = await getTokenInfo();
+            doodlesTokens = tokenInfo.doodlesTokens;
+            boredApeYachtClubTokens = tokenInfo.boredApeYachtClubTokens;
+            lilPudgysTokens = tokenInfo.lilPudgysTokens;
+
+            for (let index = 0; index < doodlesTokens.length; index++) {
+                const token = doodlesTokens[index];
+                const tokenId = token.id;
+                const tokenOwner = token.owner;
+                
+            }
+        });
+        it("Should revert when listing with not supported tokens", async () => {
+            const tokenAddress = NFTTokens[0].address;
+            const token = doodlesTokens[0];
+            const tokenId = token.id;
+
+            const tokenOwner = token.owner;
+
+            const preferredPayment = tetherAddress;
+            const price = ethers.parseEther("0.05");
+            const isStrictPayment = true;
+
+            await expect(
+                NftMarketplace.connect(tokenOwner).listNft(
+                    tokenAddress,
+                    tokenId,
+                    preferredPayment,
+                    price,
+                    isStrictPayment,
+                ),
+            ).to.be.revertedWithCustomError(
+                NftMarketplace,
+                "NftMarketplace__PaymentNotSupported",
+            );
+        });
+    });
     describe("Buying", () => {});
     describe("Withdrawing", () => {});
 });

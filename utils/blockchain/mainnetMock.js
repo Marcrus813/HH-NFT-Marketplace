@@ -1,6 +1,7 @@
 const { ethers } = require("hardhat");
 
 const { ERC20Abi } = require("./abis/erc20");
+const { ERC721Abi } = require("./abis/erc721");
 
 async function supplyGas(targetAddress) {
     const targetEthBalance = await ethers.provider.getBalance(targetAddress);
@@ -80,4 +81,33 @@ const getErc20Allowance = async (tokenAddress, ownerAddress, targetAddress) => {
     return allowance;
 };
 
-module.exports = { supplyToken, approveAllowance, getErc20Balance, getErc20Allowance };
+const getErc721Owner = async (tokenAddress, tokenId) => {
+    const [queryAccount] = await ethers.getSigners();
+
+    const token = await ethers.getContractAt(
+        ERC721Abi,
+        tokenAddress,
+        queryAccount,
+    );
+
+    const owner = await token.ownerOf(tokenId);
+    return owner;
+};
+
+const transferNft = async (token, from, to, id) => {
+    await supplyGas(from);
+
+    const token = await ethers.getContractAt(ERC721Abi, tokenAddress, from);
+
+    const transferTxn = await token.safeTransferFrom(from, to, id);
+    await transferTxn.wait();
+};
+
+module.exports = {
+    supplyToken,
+    approveAllowance,
+    getErc20Balance,
+    getErc20Allowance,
+    getErc721Owner,
+    transferNft
+};

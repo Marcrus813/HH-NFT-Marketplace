@@ -63,6 +63,7 @@ module.exports = {
             chainId: 31337,
             forking: {
                 url: MAINNET_RPC_URL,
+                blockNumber: 22486574
             },
         },
         localhost: {

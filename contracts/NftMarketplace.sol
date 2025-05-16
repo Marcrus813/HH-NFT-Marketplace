@@ -265,7 +265,6 @@ contract NftMarketplace is ReentrancyGuard {
         delete s_listingMap[nftAddress][tokenId];
     }
 
-    // TODO: Limit to internal and view after testing done
     function convertToEth(
         ERC20 paymentToken,
         uint256 amount
@@ -288,13 +287,14 @@ contract NftMarketplace is ReentrancyGuard {
              * (scaledAmount * 1e18): Result in wei
              * Then normalize against both token and feed decimals
              */
-            result = (scaledAmount * 1e18) / (10 ** (tokenDecimals + feedDecimals));
+            result =
+                (scaledAmount * 1e18) /
+                (10 ** (tokenDecimals + feedDecimals));
         } else {
             result = amount;
         }
     }
 
-    // TODO: Limit to internal and view after testing done
     function convertFromEth(
         ERC20 targetToken,
         uint256 ethAmount
@@ -317,7 +317,9 @@ contract NftMarketplace is ReentrancyGuard {
              * (answer * 1e18): Token normalized by eth decimals
              * Then normalize against both token and feed decimals
              */
-            result = (ethAmount * 10 ** (tokenDecimals + feedDecimals)) / (uint256(answer) * 1e18);
+            result =
+                (ethAmount * 10 ** (tokenDecimals + feedDecimals)) /
+                (uint256(answer) * 1e18);
         } else {
             result = ethAmount;
         }
@@ -365,7 +367,6 @@ contract NftMarketplace is ReentrancyGuard {
      * @return result True if the payment is valid, false otherwise
      * @dev This is used after `strictPaymentChecked` modifier, so if strict payment, then the tokens are matched
      */
-    // TODO: Limit to internal and view after testing
     function verifyPayment(
         address buyer,
         uint256 msgValue,
@@ -815,6 +816,21 @@ contract NftMarketplace is ReentrancyGuard {
             revert NftMarketplace__TokenNotListed(nftAddress, tokenId);
         }
         result = s_listingMap[nftAddress][tokenId];
+    }
+
+    function getActiveListingKeys()
+        public
+        view
+        returns (ListingKey[] memory result)
+    {
+        result = s_activeListings;
+    }
+
+    function getListingPaddedIndex(
+        address nftAddress,
+        uint256 tokenId
+    ) public view returns (uint256 result) {
+        result = s_listingPaddedIndex[nftAddress][tokenId];
     }
 
     function getSupplierProceeds(
