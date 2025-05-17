@@ -84,7 +84,7 @@
     - Mutex locks, E.g.: OpenZeppelin: ReentrancyGuard
 
         ```solidity
-        bool locked;
+        bool locked
         function transaction() {
             require(!locked, "revert");
 
@@ -132,6 +132,10 @@
         - Answer: 404515560157583 means 1 USDC = 404515560157583 wei
         - `decimals` from price feed `USDC / ETH` returns `18` while decimals of USDC is 6, ~~so probably the decimals of the target token~~ here it is the decimals of the price feed
             - Take `wBTC / ETH` for example, the decimal is 8, same as `wBTC`, the result would also be in 8 decimals
+- [x] Yarn problem
+    - Unable to fetch due to ssl problem
+        - The root cause is from getting `yarn 1.22.22`. When running `yarn` in `4.9.1` and getting some packages that require `1.22.22`, the previous setup has `4.9.1` installed globally, so need to download `1.22.22` in this case, now we have `1.22.22` installed globally, so when in this scenario, it will work even the project is running `4.9.1`
+            - So WSL might not be the culprit here, but I discarded it anyway.🤭
 
 ## Testing
 
@@ -141,3 +145,9 @@
       `ProviderError: Sender doesn't have enough funds to send tx. The max upfront cost is: 79949756940000000 and the sender's balance is: 63297255814439858.`
         - When sending ETH, the whale address might be a contract, so when there's no receive function in it, sending it eth will go wrong
         - It's difficult to find all the EOA addresses owning the token, so in the end I used a Binance account: `0x28C6c06298d514Db089934071355E5743bf21d60`
+    - Impersonating can be tricky, may have to do sth about checking whether the gas receiver is a contact
+        - Check `ethers.provider.getCode(address) == "0x"`
+            - Possible security risk(on chain):
+                - [Reference](https://ethereum.stackexchange.com/questions/28521/how-to-detect-if-an-address-is-a-contract)
+                - Key point, when returned `0x`, it means the address is not a contract **YET**, also, some libraries can exploit this behavior
+                - Generally, avoid doing this on-chain, but off-chain it should be good

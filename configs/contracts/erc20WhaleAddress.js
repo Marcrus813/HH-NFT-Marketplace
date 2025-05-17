@@ -30,4 +30,4 @@ ERC20WhaleAddress.set(
     "0x28C6c06298d514Db089934071355E5743bf21d60",
 ); // wBTC
 
-module.exports = { WhaleAddress: ERC20WhaleAddress };
+module.exports = { ERC20WhaleAddress };

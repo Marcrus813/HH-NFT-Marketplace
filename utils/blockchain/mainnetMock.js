@@ -63,8 +63,7 @@ const getErc20Balance = async (tokenAddress, ownerAddress, targetAddress) => {
         impersonatedSigner,
     );
 
-    const balance = await token.balanceOf(targetAddress);
-    return balance;
+    return await token.balanceOf(targetAddress);
 };
 
 const getErc20Allowance = async (tokenAddress, ownerAddress, targetAddress) => {
@@ -77,29 +76,25 @@ const getErc20Allowance = async (tokenAddress, ownerAddress, targetAddress) => {
         impersonatedSigner,
     );
 
-    const allowance = await token.allowance(ownerAddress, targetAddress);
-    return allowance;
+    return await token.allowance(ownerAddress, targetAddress);
 };
 
-const getErc721Owner = async (tokenAddress, tokenId) => {
-    const [queryAccount] = await ethers.getSigners();
+const transferNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
+    await supplyGas(fromAddress);
+
+    const impersonatedSigner = await ethers.getImpersonatedSigner(fromAddress);
 
     const token = await ethers.getContractAt(
         ERC721Abi,
         tokenAddress,
-        queryAccount,
+        impersonatedSigner,
     );
 
-    const owner = await token.ownerOf(tokenId);
-    return owner;
-};
-
-const transferNft = async (token, from, to, id) => {
-    await supplyGas(from);
-
-    const token = await ethers.getContractAt(ERC721Abi, tokenAddress, from);
-
-    const transferTxn = await token.safeTransferFrom(from, to, id);
+    const transferTxn = await token.transferFrom(
+        impersonatedSigner,
+        toAddress,
+        tokenId,
+    );
     await transferTxn.wait();
 };
 
@@ -108,6 +103,5 @@ module.exports = {
     approveAllowance,
     getErc20Balance,
     getErc20Allowance,
-    getErc721Owner,
-    transferNft
+    transferNft,
 };

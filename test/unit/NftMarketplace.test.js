@@ -14,6 +14,7 @@ const {
 const {
     supplyToken,
     approveAllowance,
+    transferNft,
 } = require("../../utils/blockchain/mainnetMock");
 const {
     ERC20WhaleAddress,
@@ -163,8 +164,6 @@ describe("NftMarketplace", () => {
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
-
-                    const priceFeedDecimals = priceFeed.decimals();
 
                     const result = await NftMarketplace.convertToEth(
                         usdcAddress,
@@ -5226,21 +5225,72 @@ describe("NftMarketplace", () => {
     describe("Listing", () => {
         let doodlesTokens, boredApeYachtClubTokens, lilPudgysTokens;
 
-        let doodleHolder = clientAccounts[0];
-        let boredApeYachtClubHolder = clientAccounts[1];
-        let lilPudgysHolder = clientAccounts[2];
+        let doodleAddress;
+        let boredApeYachtClubAddress;
+        let lilPudgysAddress;
+
+        let doodleHolder;
+        let boredApeYachtClubHolder;
+        let lilPudgysHolder;
 
         beforeEach(async () => {
+            doodleAddress = NFTTokens[0].address;
+            boredApeYachtClubAddress = NFTTokens[1].address;
+            lilPudgysAddress = NFTTokens[2].address;
+
+            doodleHolder = clientAccounts[0];
+            boredApeYachtClubHolder = clientAccounts[1];
+            lilPudgysHolder = clientAccounts[2];
+
             const tokenInfo = await getTokenInfo();
             doodlesTokens = tokenInfo.doodlesTokens;
             boredApeYachtClubTokens = tokenInfo.boredApeYachtClubTokens;
             lilPudgysTokens = tokenInfo.lilPudgysTokens;
 
+            // Transfer all doodles to local holder
             for (let index = 0; index < doodlesTokens.length; index++) {
                 const token = doodlesTokens[index];
                 const tokenId = token.id;
                 const tokenOwner = token.owner;
-                
+
+                await transferNft(
+                    doodleAddress,
+                    tokenOwner,
+                    doodleHolder,
+                    tokenId,
+                );
+            }
+
+            // Transfer all BAYC to local holder
+            for (
+                let index = 0;
+                index < boredApeYachtClubTokens.length;
+                index++
+            ) {
+                const token = boredApeYachtClubTokens[index];
+                const tokenId = token.id;
+                const tokenOwner = token.owner;
+
+                await transferNft(
+                    boredApeYachtClubAddress,
+                    tokenOwner,
+                    boredApeYachtClubHolder,
+                    tokenId,
+                );
+            }
+
+            // Transfer all LilPudgys to local holder
+            for (let index = 0; index < lilPudgysTokens.length; index++) {
+                const token = lilPudgysTokens[index];
+                const tokenId = token.id;
+                const tokenOwner = token.owner;
+
+                await transferNft(
+                    lilPudgysAddress,
+                    tokenOwner,
+                    lilPudgysHolder,
+                    tokenId,
+                );
             }
         });
         it("Should revert when listing with not supported tokens", async () => {
@@ -5248,7 +5298,7 @@ describe("NftMarketplace", () => {
             const token = doodlesTokens[0];
             const tokenId = token.id;
 
-            const tokenOwner = token.owner;
+            const tokenOwner = doodleHolder;
 
             const preferredPayment = tetherAddress;
             const price = ethers.parseEther("0.05");

@@ -1,5 +1,6 @@
 const { ethers } = require("hardhat");
-const { getErc721Owner } = require("../../utils/blockchain/mainnetMock");
+
+const { ERC721Abi } = require("../../utils/blockchain/abis/erc721");
 
 const tokenContracts = [
     {
@@ -16,171 +17,62 @@ const tokenContracts = [
     },
 ];
 
-const _doodlesTokens = [
-    {
-        id: 5561,
-        owner: "",
-    },
-    {
-        id: 8315,
-        owner: "",
-    },
-    {
-        id: 1211,
-        owner: "",
-    },
-    {
-        id: 5856,
-        owner: "",
-    },
-    {
-        id: 9690,
-        owner: "",
-    },
-    {
-        id: 2526,
-        owner: "",
-    },
-    {
-        id: 2402,
-        owner: "",
-    },
-    {
-        id: 4740,
-        owner: "",
-    },
-    {
-        id: 7761,
-        owner: "",
-    },
-    {
-        id: 319,
-        owner: "",
-    },
-];
+async function isContract(address) {
+    const code = await ethers.provider.getCode(address);
+    return code !== "0x";
+}
 
-const _boredApeYachtClubTokens = [
-    {
-        id: 4434,
-        owner: "",
-    },
-    {
-        id: 5326,
-        owner: "",
-    },
-    {
-        id: 1302,
-        owner: "",
-    },
-    {
-        id: 6895,
-        owner: "",
-    },
-    {
-        id: 2920,
-        owner: "",
-    },
-    {
-        id: 2918,
-        owner: "",
-    },
-    {
-        id: 2218,
-        owner: "",
-    },
-    {
-        id: 917,
-        owner: "",
-    },
-    {
-        id: 4650,
-        owner: "",
-    },
-    {
-        id: 4513,
-        owner: "",
-    },
-];
+async function findNftOwnedByWallets(nftAddress, expectedCount, queryLimit) {
+    const [queryAccount] = await ethers.getSigners();
 
-const _lilPudgysTokens = [
-    {
-        id: 1033,
-        owner: "",
-    },
-    {
-        id: 593,
-        owner: "",
-    },
-    {
-        id: 11633,
-        owner: "",
-    },
-    {
-        id: 10945,
-        owner: "",
-    },
-    {
-        id: 8710,
-        owner: "",
-    },
-    {
-        id: 18116,
-        owner: "",
-    },
-    {
-        id: 14867,
-        owner: "",
-    },
-    {
-        id: 5814,
-        owner: "",
-    },
-    {
-        id: 7113,
-        owner: "",
-    },
-    {
-        id: 13391,
-        owner: "",
-    },
-];
+    const token = await ethers.getContractAt(
+        ERC721Abi,
+        nftAddress,
+        queryAccount,
+    );
+
+    let result = [];
+    for (let id = 1; id < queryLimit; id++) {
+        let owner;
+        try {
+            owner = await token.ownerOf(id);
+        } catch (e) {
+            continue;
+        }
+
+        const isOwnerContract = await isContract(owner);
+        if (!isOwnerContract) {
+            result.push({
+                id: id,
+                owner: owner,
+            });
+        }
+        if (result.length >= expectedCount) {
+            break;
+        }
+    }
+
+    return result;
+}
 
 const getTokenInfo = async () => {
-    const [queryAccount] = await ethers.getSigners();
-    let tokenContractInstance;
+    let doodlesTokens, boredApeYachtClubTokens, lilPudgysTokens;
 
-    // Doodles
-    const doodlesAddress = tokenContracts[0].address;
-    let doodlesTokens = [];
-    for (let index = 0; index < _doodlesTokens.length; index++) {
-        let token = _doodlesTokens[index];
-        const id = token.id;
-        const owner = await getErc721Owner(doodlesAddress, id);
-        token.owner = owner.toLowerCase();
-        doodlesTokens.push(token);
-    }
-
-    // BoredApeYachtClub
-    const boredApeYachtClubAddress = tokenContracts[1].address;
-    let boredApeYachtClubTokens = [];
-    for (let index = 0; index < _boredApeYachtClubTokens.length; index++) {
-        let token = _boredApeYachtClubTokens[index];
-        const id = token.id;
-        const owner = await getErc721Owner(boredApeYachtClubAddress, id);
-        token.owner = owner.toLowerCase();
-        boredApeYachtClubTokens.push(token);
-    }
-
-    // LilPudgy
-    const lilPudgysAddress = tokenContracts[2].address;
-    let lilPudgysTokens = [];
-    for (let index = 0; index < _lilPudgysTokens.length; index++) {
-        let token = _lilPudgysTokens[index];
-        const id = token.id;
-        const owner = await getErc721Owner(lilPudgysAddress, id);
-        token.owner = owner.toLowerCase();
-        lilPudgysTokens.push(token);
-    }
+    doodlesTokens = await findNftOwnedByWallets(
+        tokenContracts[0].address,
+        10,
+        1000,
+    );
+    boredApeYachtClubTokens = await findNftOwnedByWallets(
+        tokenContracts[1].address,
+        10,
+        1000,
+    );
+    lilPudgysTokens = await findNftOwnedByWallets(
+        tokenContracts[2].address,
+        10,
+        1000,
+    );
 
     return { doodlesTokens, boredApeYachtClubTokens, lilPudgysTokens };
 };
