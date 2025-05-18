@@ -98,10 +98,24 @@ const transferNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
     await transferTxn.wait();
 };
 
+const approveNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
+    await supplyGas(fromAddress);
+
+    const impersonatedSigner = await ethers.getImpersonatedSigner(fromAddress);
+    const token = await ethers.getContractAt(
+        ERC721Abi,
+        tokenAddress,
+        impersonatedSigner,
+    );
+    const approveTxn = await token.approve(toAddress, tokenId);
+    await approveTxn.wait();
+};
+
 module.exports = {
     supplyToken,
     approveAllowance,
     getErc20Balance,
     getErc20Allowance,
     transferNft,
+    approveNft
 };

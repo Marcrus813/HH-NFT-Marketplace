@@ -165,7 +165,7 @@ contract NftMarketplace is ReentrancyGuard {
     modifier notYetListed(address nftAddress, uint256 tokenId) {
         uint256 paddedIndex = s_listingPaddedIndex[nftAddress][tokenId];
         if (paddedIndex != 0) {
-            revert NftMarketplace__TokenNotListed(nftAddress, tokenId);
+            revert NftMarketplace__AlreadyListed(nftAddress, tokenId);
         }
         _;
     }

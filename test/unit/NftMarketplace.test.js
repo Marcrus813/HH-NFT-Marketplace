@@ -15,6 +15,7 @@ const {
     supplyToken,
     approveAllowance,
     transferNft,
+    approveNft,
 } = require("../../utils/blockchain/mainnetMock");
 const {
     ERC20WhaleAddress,
@@ -43,7 +44,7 @@ describe("NftMarketplace", () => {
     const zeroAddress = "0x0000000000000000000000000000000000000000";
 
     const sxtAddress = "0xe6bfd33f52d82ccb5b37e16d3dd81f9ffdabb195";
-    const tetherAddress = "0xdac17f958d2ee523a2206206994597c13d831ec7";
+    const tetherAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
     async function deployFixture() {
         const { NftMarketplace: NftMarketplaceDeployment } =
@@ -154,6 +155,16 @@ describe("NftMarketplace", () => {
 
         describe("Token conversion(Tested with visibility as PUBLIC)", () => {
             describe("Convert to ETH", () => {
+                it("Should revert if requested not supported tokens", async () => {
+                    await expect(
+                        NftMarketplace.convertToEth(tetherAddress, BigInt(1e6)),
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__PaymentNotSupported",
+                        )
+                        .withArgs(tetherAddress);
+                });
                 it("Should correctly convert USDC to ETH", async () => {
                     const feedAddress =
                         await NftMarketplace.getPriceFeed(usdcAddress);
@@ -244,6 +255,19 @@ describe("NftMarketplace", () => {
             });
 
             describe("Convert from ETH", () => {
+                it("Should revert if requested not supported tokens", async () => {
+                    await expect(
+                        NftMarketplace.convertFromEth(
+                            tetherAddress,
+                            BigInt(1e6),
+                        ),
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__PaymentNotSupported",
+                        )
+                        .withArgs(tetherAddress);
+                });
                 it("Should correctly convert ETH to USDC", async () => {
                     const feedAddress =
                         await NftMarketplace.getPriceFeed(usdcAddress);
@@ -5170,11 +5194,15 @@ describe("NftMarketplace", () => {
                 const uniFeed = await NftMarketplace.getPriceFeed(uniAddress);
                 const wBtcFeed = await NftMarketplace.getPriceFeed(wBtcAddress);
 
+                const wEthFeed = await NftMarketplace.getPriceFeed(wEthAddress);
+
                 expect(usdcFeed).to.be.equals(properUsdcFeed);
                 expect(daiFeed).to.be.equals(properDaiFeed);
                 expect(linkFeed).to.be.equals(properLinkFeed);
                 expect(uniFeed).to.be.equals(properUniFeed);
                 expect(wBtcFeed).to.be.equals(properWbtcFeed);
+
+                expect(wEthFeed).to.be.equals(zeroAddress);
             });
             it("Should have empty `s_listingMap`", async () => {
                 const randomWallet = ethers.Wallet.createRandom();
@@ -5183,10 +5211,12 @@ describe("NftMarketplace", () => {
                 const randomId = Math.floor(Math.random());
                 await expect(
                     NftMarketplace.getListingInfo(randomAddress, randomId),
-                ).to.be.revertedWithCustomError(
-                    NftMarketplace,
-                    "NftMarketplace__TokenNotListed",
-                );
+                )
+                    .to.be.revertedWithCustomError(
+                        NftMarketplace,
+                        "NftMarketplace__TokenNotListed",
+                    )
+                    .withArgs(randomAddress, randomId);
             });
             it("Should have empty `s_activeListings`", async () => {
                 const activeListings =
@@ -5312,10 +5342,80 @@ describe("NftMarketplace", () => {
                     price,
                     isStrictPayment,
                 ),
+            )
+                .to.be.revertedWithCustomError(
+                    NftMarketplace,
+                    "NftMarketplace__PaymentNotSupported",
+                )
+                .withArgs(tetherAddress);
+        });
+
+        it("Should revert if listing with price of zero", async () => {
+            const tokenAddress = NFTTokens[0].address;
+            const token = doodlesTokens[0];
+            const tokenId = token.id;
+
+            const tokenOwner = doodleHolder;
+            const preferredPayment = zeroAddress;
+            const price = 0;
+            const isStrictPayment = true;
+
+            await expect(
+                NftMarketplace.connect(tokenOwner).listNft(
+                    tokenAddress,
+                    tokenId,
+                    preferredPayment,
+                    price,
+                    isStrictPayment,
+                ),
             ).to.be.revertedWithCustomError(
                 NftMarketplace,
-                "NftMarketplace__PaymentNotSupported",
+                "NftMarketplace__PriceIsZero",
             );
+        });
+
+        it("Should revert if listing an already listed token", async () => {
+            const tokenAddress = NFTTokens[0].address;
+            const token = doodlesTokens[0];
+            const tokenId = token.id;
+
+            const tokenOwner = doodleHolder;
+            const preferredPayment = zeroAddress;
+            const price = ethers.parseEther("1");
+            const isStrictPayment = true;
+
+            await approveNft(
+                tokenAddress,
+                tokenOwner.address,
+                NftMarketplaceAddress,
+                tokenId,
+            );
+
+            const initialListTxn = await NftMarketplace.connect(
+                tokenOwner,
+            ).listNft(
+                tokenAddress,
+                tokenId,
+                preferredPayment,
+                price,
+                isStrictPayment,
+            );
+            await initialListTxn.wait();
+
+            await expect(
+                NftMarketplace.connect(tokenOwner).listNft(
+                    tokenAddress,
+                    tokenId,
+                    preferredPayment,
+                    price,
+                    isStrictPayment,
+                ),
+            )
+                .to.be.revertedWithCustomError(
+                    NftMarketplace,
+                    "NftMarketplace__AlreadyListed",
+                )
+                // .withArgs(tokenAddress, tokenId);
         });
     });
     describe("Buying", () => {});
