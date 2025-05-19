@@ -5266,7 +5266,78 @@ describe("NftMarketplace", () => {
         });
     });
 
-    describe("Listing", () => {
+    describe("Listing operations", () => {
+        function getNftMarketplaceInstanceByTokenHolder(_tokenAddress) {
+            let NftMarketplaceInstance;
+            switch (_tokenAddress) {
+                case doodleAddress:
+                    NftMarketplaceInstance = NftMarketplaceByDoodleHolder;
+                    break;
+                case boredApeYachtClubAddress:
+                    NftMarketplaceInstance = NftMarketplaceByBaycHolder;
+                    break;
+                case lilPudgysAddress:
+                    NftMarketplaceInstance = NftMarketplaceBylilPudgysHolder;
+                    break;
+            }
+
+            return NftMarketplaceInstance;
+        }
+
+        async function listNft(
+            _tokenAddress,
+            _tokenId,
+            _preferredPayment,
+            _price,
+            _isStrictPayment
+        ) {
+            const NftMarketplaceInstance =
+                getNftMarketplaceInstanceByTokenHolder(_tokenAddress);
+
+            const listTxn = await NftMarketplaceInstance.listNft(
+                _tokenAddress,
+                _tokenId,
+                _preferredPayment,
+                _price,
+                _isStrictPayment
+            );
+
+            await listTxn.wait();
+        }
+
+        async function cancelListing(_tokenAddress, _tokenId) {
+            const NftMarketplaceInstance =
+                getNftMarketplaceInstanceByTokenHolder(_tokenAddress);
+
+            const cancelTxn = await NftMarketplaceInstance.cancelListing(
+                _tokenAddress,
+                _tokenId
+            );
+
+            await cancelTxn.wait();
+        }
+
+        async function updateListing(
+            _tokenAddress,
+            _tokenId,
+            _preferredPayment,
+            _price,
+            _isStrictPayment
+        ) {
+            const NftMarketplaceInstance =
+                getNftMarketplaceInstanceByTokenHolder(_tokenAddress);
+
+            const updateTxn = await NftMarketplaceInstance.updateListing(
+                _tokenAddress,
+                _tokenId,
+                _preferredPayment,
+                _price,
+                _isStrictPayment
+            );
+
+            await updateTxn.wait();
+        }
+
         let doodlesTokens, boredApeYachtClubTokens, lilPudgysTokens;
 
         let doodleAddress;
@@ -5349,202 +5420,313 @@ describe("NftMarketplace", () => {
                 );
             }
         });
-        describe("Precautions", () => {
-            it("Should revert when listing with not supported tokens", async () => {
-                const tokenAddress = doodleAddress;
-                const token = doodlesTokens[0];
-                const tokenId = token.id;
 
-                const preferredPayment = tetherAddress;
-                const price = ethers.parseEther("0.05");
-                const isStrictPayment = true;
+        describe("Listing", () => {
+            describe("Precautions", () => {
+                it("Should revert when listing with not supported tokens", async () => {
+                    const tokenAddress = doodleAddress;
+                    const token = doodlesTokens[0];
+                    const tokenId = token.id;
 
-                await expect(
-                    NftMarketplaceByDoodleHolder.listNft(
-                        tokenAddress,
-                        tokenId,
-                        preferredPayment,
-                        price,
-                        isStrictPayment
+                    const preferredPayment = tetherAddress;
+                    const price = ethers.parseEther("0.05");
+                    const isStrictPayment = true;
+
+                    await expect(
+                        NftMarketplaceByDoodleHolder.listNft(
+                            tokenAddress,
+                            tokenId,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        )
                     )
-                )
-                    .to.be.revertedWithCustomError(
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__PaymentNotSupported"
+                        )
+                        .withArgs(tetherAddress);
+                });
+
+                it("Should revert if listing with price of zero", async () => {
+                    const tokenAddress = doodleAddress;
+                    const token = doodlesTokens[0];
+                    const tokenId = token.id;
+                    const preferredPayment = zeroAddress;
+                    const price = 0;
+                    const isStrictPayment = true;
+
+                    await expect(
+                        NftMarketplaceByDoodleHolder.listNft(
+                            tokenAddress,
+                            tokenId,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        )
+                    ).to.be.revertedWithCustomError(
                         NftMarketplace,
-                        "NftMarketplace__PaymentNotSupported"
-                    )
-                    .withArgs(tetherAddress);
-            });
+                        "NftMarketplace__PriceIsZero"
+                    );
+                });
 
-            it("Should revert if listing with price of zero", async () => {
-                const tokenAddress = doodleAddress;
-                const token = doodlesTokens[0];
-                const tokenId = token.id;
-                const preferredPayment = zeroAddress;
-                const price = 0;
-                const isStrictPayment = true;
+                it("Should revert if listing an already listed token", async () => {
+                    const tokenAddress = doodleAddress;
+                    const token = doodlesTokens[0];
+                    const tokenId = token.id;
 
-                await expect(
-                    NftMarketplaceByDoodleHolder.listNft(
+                    const tokenOwner = doodleHolder;
+                    const preferredPayment = zeroAddress;
+                    const price = ethers.parseEther("1");
+                    const isStrictPayment = true;
+
+                    await approveNft(
                         tokenAddress,
-                        tokenId,
-                        preferredPayment,
-                        price,
-                        isStrictPayment
+                        tokenOwner.address,
+                        NftMarketplaceAddress,
+                        tokenId
+                    );
+
+                    const initialListTxn =
+                        await NftMarketplaceByDoodleHolder.listNft(
+                            tokenAddress,
+                            tokenId,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        );
+                    await initialListTxn.wait();
+
+                    await expect(
+                        NftMarketplaceByDoodleHolder.listNft(
+                            tokenAddress,
+                            tokenId,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        )
                     )
-                ).to.be.revertedWithCustomError(
-                    NftMarketplace,
-                    "NftMarketplace__PriceIsZero"
-                );
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__AlreadyListed"
+                        )
+                        .withArgs(tokenAddress, tokenId);
+                });
+                it("Should revert if not being listed by token owner", async () => {
+                    const tokenAddress = doodleAddress;
+                    const token = doodlesTokens[0];
+                    const tokenId = token.id;
+
+                    const tokenOwner = doodleHolder;
+
+                    const preferredPayment = zeroAddress;
+                    const price = ethers.parseEther("1");
+                    const isStrictPayment = true;
+
+                    await approveNft(
+                        tokenAddress,
+                        tokenOwner.address,
+                        NftMarketplaceAddress,
+                        tokenId
+                    );
+
+                    await expect(
+                        NftMarketplaceByBaycHolder.listNft(
+                            tokenAddress,
+                            tokenId,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        )
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__NotOperatedByOwner"
+                        )
+                        .withArgs(
+                            tokenAddress,
+                            tokenId,
+                            boredApeYachtClubHolder.address
+                        );
+                });
+                it("Should revert if marketplace is not approved for the token", async () => {
+                    const tokenAddress = doodleAddress;
+                    const token = doodlesTokens[0];
+                    const tokenId = token.id;
+
+                    const preferredPayment = zeroAddress;
+                    const price = ethers.parseEther("1");
+                    const isStrictPayment = true;
+
+                    await expect(
+                        NftMarketplaceByDoodleHolder.listNft(
+                            tokenAddress,
+                            tokenId,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        )
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__NotApprovedForMarketplace"
+                        )
+                        .withArgs(tokenAddress, tokenId);
+                });
             });
+            describe("Updating storage", () => {
+                let tokenAddress,
+                    token,
+                    tokenId,
+                    tokenOwner,
+                    preferredPayment,
+                    price,
+                    isStrictPayment;
 
-            it("Should revert if listing an already listed token", async () => {
-                const tokenAddress = doodleAddress;
-                const token = doodlesTokens[0];
-                const tokenId = token.id;
+                beforeEach(async () => {
+                    tokenAddress = doodleAddress;
+                    token = doodlesTokens[0];
+                    tokenId = token.id;
+                    tokenOwner = doodleHolder;
+                    preferredPayment = zeroAddress;
+                    price = ethers.parseEther("1");
+                    isStrictPayment = true;
 
-                const tokenOwner = doodleHolder;
-                const preferredPayment = zeroAddress;
-                const price = ethers.parseEther("1");
-                const isStrictPayment = true;
-
-                await approveNft(
-                    tokenAddress,
-                    tokenOwner.address,
-                    NftMarketplaceAddress,
-                    tokenId
-                );
-
-                const initialListTxn =
-                    await NftMarketplaceByDoodleHolder.listNft(
+                    await approveNft(
+                        tokenAddress,
+                        tokenOwner.address,
+                        NftMarketplaceAddress,
+                        tokenId
+                    );
+                });
+                it("Should update `s_listingMap`", async () => {
+                    await listNft(
                         tokenAddress,
                         tokenId,
                         preferredPayment,
                         price,
                         isStrictPayment
                     );
-                await initialListTxn.wait();
 
-                await expect(
-                    NftMarketplaceByDoodleHolder.listNft(
+                    const updatedListing =
+                        await NftMarketplaceByDoodleHolder.getListingInfo(
+                            tokenAddress,
+                            tokenId
+                        );
+
+                    const listedPayment = updatedListing.preferredPayment;
+                    const listedPrice = updatedListing.price;
+                    const listedStrictPayment = updatedListing.strictPayment;
+                    const listedSeller = updatedListing.seller;
+
+                    expect(listedPayment).to.be.equals(preferredPayment);
+                    expect(listedPrice).to.be.equals(ethers.parseEther("1"));
+                    expect(listedStrictPayment).to.be.true;
+                    expect(listedSeller).to.be.equals(doodleHolder.address);
+                });
+                it("Should update `s_activeListings`", async () => {
+                    const activeListingsBefore =
+                        await NftMarketplaceByDoodleHolder.getActiveListingKeys();
+                    const activeListingLengthBefore =
+                        activeListingsBefore.length;
+
+                    await listNft(
                         tokenAddress,
                         tokenId,
                         preferredPayment,
                         price,
                         isStrictPayment
-                    )
-                )
-                    .to.be.revertedWithCustomError(
-                        NftMarketplace,
-                        "NftMarketplace__AlreadyListed"
-                    )
-                    .withArgs(tokenAddress, tokenId);
-            });
-            it("Should revert if not being listed by token owner", async () => {
-                const tokenAddress = doodleAddress;
-                const token = doodlesTokens[0];
-                const tokenId = token.id;
-
-                const tokenOwner = doodleHolder;
-
-                const preferredPayment = zeroAddress;
-                const price = ethers.parseEther("1");
-                const isStrictPayment = true;
-
-                await approveNft(
-                    tokenAddress,
-                    tokenOwner.address,
-                    NftMarketplaceAddress,
-                    tokenId
-                );
-
-                await expect(
-                    NftMarketplaceByBaycHolder.listNft(
-                        tokenAddress,
-                        tokenId,
-                        preferredPayment,
-                        price,
-                        isStrictPayment
-                    )
-                )
-                    .to.be.revertedWithCustomError(
-                        NftMarketplace,
-                        "NftMarketplace__NotListedByOwner"
-                    )
-                    .withArgs(
-                        tokenAddress,
-                        tokenId,
-                        boredApeYachtClubHolder.address
                     );
-            });
-            it("Should revert if marketplace is not approved for the token", async () => {
-                const tokenAddress = doodleAddress;
-                const token = doodlesTokens[0];
-                const tokenId = token.id;
 
-                const preferredPayment = zeroAddress;
-                const price = ethers.parseEther("1");
-                const isStrictPayment = true;
+                    const activeListingsAfter =
+                        await NftMarketplaceByDoodleHolder.getActiveListingKeys();
+                    const activeListingLengthAfter = activeListingsAfter.length;
+                    const latestActiveListingKey =
+                        activeListingsAfter[activeListingLengthAfter - 1];
 
-                await expect(
-                    NftMarketplaceByDoodleHolder.listNft(
+                    const listingKeyAddress = latestActiveListingKey.nftAddress;
+                    const listingKeyId = latestActiveListingKey.tokenId;
+
+                    expect(activeListingLengthAfter).to.be.equals(
+                        activeListingLengthBefore + 1
+                    );
+                    expect(listingKeyAddress).to.be.equals(tokenAddress);
+                    expect(listingKeyId).to.be.equals(tokenId);
+                });
+                it("Should update `s_listingPaddedIndex`", async () => {
+                    const listingPaddedIndexBefore =
+                        await NftMarketplaceByDoodleHolder.getListingPaddedIndex(
+                            tokenAddress,
+                            tokenId
+                        );
+                    expect(listingPaddedIndexBefore).to.be.equals(0);
+
+                    await listNft(
                         tokenAddress,
                         tokenId,
                         preferredPayment,
                         price,
                         isStrictPayment
+                    );
+
+                    const activeListings =
+                        await NftMarketplaceByDoodleHolder.getActiveListingKeys();
+                    const activeListingsCount = activeListings.length;
+                    const latestListingPaddedIndex =
+                        await NftMarketplaceByDoodleHolder.getListingPaddedIndex(
+                            tokenAddress,
+                            tokenId
+                        );
+                    expect(latestListingPaddedIndex).to.be.equals(
+                        activeListingsCount
+                    );
+                });
+                it("Should emit `TokenListed` event", async () => {
+                    await expect(
+                        NftMarketplaceByDoodleHolder.listNft(
+                            tokenAddress,
+                            tokenId,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        )
                     )
-                )
-                    .to.be.revertedWithCustomError(
-                        NftMarketplace,
-                        "NftMarketplace__NotApprovedForMarketplace"
-                    )
-                    .withArgs(tokenAddress, tokenId);
+                        .to.emit(NftMarketplaceByDoodleHolder, "TokenListed")
+                        .withArgs(
+                            tokenAddress,
+                            tokenId,
+                            doodleHolder.address,
+                            preferredPayment,
+                            price,
+                            isStrictPayment
+                        );
+                });
             });
         });
-        describe("Updating storage", () => {
-            let tokenAddress,
-                token,
-                tokenId,
-                tokenOwner,
-                preferredPayment,
-                price,
-                isStrictPayment;
-
-            async function listNft(
-                _tokenAddress,
-                _tokenId,
-                _preferredPayment,
-                _price,
-                _isStrictPayment
-            ) {
-                const listTxn = await NftMarketplaceByDoodleHolder.listNft(
-                    _tokenAddress,
-                    _tokenId,
-                    _preferredPayment,
-                    _price,
-                    _isStrictPayment
-                );
-
-                await listTxn.wait();
-            }
+        describe("Remove Listing", () => {
+            let tokenAddress;
+            let token;
+            let tokenId;
+            let preferredPayment;
+            let price;
+            let isStrictPayment;
 
             beforeEach(async () => {
                 tokenAddress = doodleAddress;
                 token = doodlesTokens[0];
                 tokenId = token.id;
-                tokenOwner = doodleHolder;
+
                 preferredPayment = zeroAddress;
                 price = ethers.parseEther("1");
                 isStrictPayment = true;
 
                 await approveNft(
                     tokenAddress,
-                    tokenOwner.address,
+                    doodleHolder.address,
                     NftMarketplaceAddress,
                     tokenId
                 );
-            });
-            it("Should update `s_listingMap`", async () => {
+
                 await listNft(
                     tokenAddress,
                     tokenId,
@@ -5552,53 +5734,26 @@ describe("NftMarketplace", () => {
                     price,
                     isStrictPayment
                 );
+            });
 
-                const updatedListing =
-                    await NftMarketplaceByDoodleHolder.getListingInfo(
+            it("Should revert when being cancel by non-owner account", async () => {
+                const NftMarketplaceAttackInstance =
+                    getNftMarketplaceInstanceByTokenHolder(lilPudgysAddress);
+                await expect(
+                    NftMarketplaceAttackInstance.cancelListing(
                         tokenAddress,
                         tokenId
-                    );
-
-                const listedPayment = updatedListing.preferredPayment;
-                const listedPrice = updatedListing.price;
-                const listedStrictPayment = updatedListing.strictPayment;
-                const listedSeller = updatedListing.seller;
-
-                expect(listedPayment).to.be.equals(preferredPayment);
-                expect(listedPrice).to.be.equals(ethers.parseEther("1"));
-                expect(listedStrictPayment).to.be.true;
-                expect(listedSeller).to.be.equals(doodleHolder.address);
-            });
-            it("Should update `s_activeListings`", async () => {
-                const activeListingsBefore =
-                    await NftMarketplaceByDoodleHolder.getActiveListingKeys();
-                const activeListingLengthBefore = activeListingsBefore.length;
-
-                await listNft(
-                    tokenAddress,
-                    tokenId,
-                    preferredPayment,
-                    price,
-                    isStrictPayment
-                );
-
-                const activeListingsAfter =
-                    await NftMarketplaceByDoodleHolder.getActiveListingKeys();
-                const activeListingLengthAfter = activeListingsAfter.length;
-                const latestActiveListingKey =
-                    activeListingsAfter[activeListingLengthAfter - 1];
-
-                const listingKeyAddress = latestActiveListingKey.nftAddress;
-                const listingKeyId = latestActiveListingKey.tokenId;
-
-                expect(activeListingLengthAfter).to.be.equals(
-                    activeListingLengthBefore + 1
-                );
-                expect(listingKeyAddress).to.be.equals(tokenAddress);
-                expect(listingKeyId).to.be.equals(tokenId);
+                    )
+                )
+                    .to.be.revertedWithCustomError(
+                        NftMarketplace,
+                        "NftMarketplace__NotOperatedByOwner"
+                    )
+                    .withArgs(tokenAddress, tokenId, lilPudgysHolder.address);
             });
         });
     });
+
     describe("Buying", () => {});
     describe("Withdrawing", () => {});
 });

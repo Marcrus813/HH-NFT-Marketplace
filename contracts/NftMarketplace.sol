@@ -17,7 +17,7 @@ error NftMarketplace__NotApprovedForMarketplace(
     uint256 tokenId
 );
 error NftMarketplace__AlreadyListed(address nftAddress, uint256 tokenId);
-error NftMarketplace__NotListedByOwner(
+error NftMarketplace__NotOperatedByOwner(
     address nftAddress,
     uint256 tokenId,
     address sender
@@ -178,7 +178,7 @@ contract NftMarketplace is ReentrancyGuard {
     ) {
         IERC721 nft = IERC721(nftAddress);
         if (nft.ownerOf(tokenId) != sender) {
-            revert NftMarketplace__NotListedByOwner(
+            revert NftMarketplace__NotOperatedByOwner(
                 nftAddress,
                 tokenId,
                 sender
