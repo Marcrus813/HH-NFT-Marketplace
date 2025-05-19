@@ -4793,6 +4793,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"hardhat-typechain@npm:^0.3.5":
+  version: 0.3.5
+  resolution: "hardhat-typechain@npm:0.3.5"
+  peerDependencies:
+    hardhat: ^2.0.10
+    ts-generator: ^0.1.1
+    typechain: ^4.0.1
+  checksum: 10c0/b02f3f62bc286b77b1cafaf1ce7f53432c21d21021bb0c2c8ee50b4dcc147785d10e7169897f3a50937a82c6aa16ffa41a8a8687d81be8200ecd761b4344a92a
+  languageName: node
+  linkType: hard
+
 "hardhat@npm:^2.24.0":
   version: 2.24.0
   resolution: "hardhat@npm:2.24.0"
@@ -6974,6 +6985,7 @@ __metadata:
     ethers: "npm:^6.4.0"
     hardhat: "npm:^2.24.0"
     hardhat-gas-reporter: "npm:^1.0.8"
+    hardhat-typechain: "npm:^0.3.5"
     prettier: "npm:^3.5.3"
     solidity-coverage: "npm:^0.8.0"
     typechain: "npm:^8.3.0"

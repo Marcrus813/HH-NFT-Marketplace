@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-ignition");
+require("@typechain/hardhat");
 require("dotenv").config();
 require("@nomicfoundation/hardhat-toolbox");
 require("hardhat-gas-reporter");
@@ -21,42 +22,42 @@ module.exports = {
                 settings: {
                     optimizer: {
                         enabled: true,
-                        runs: 100,
+                        runs: 100
                     },
-                    viaIR: true,
-                },
+                    viaIR: true
+                }
             },
             {
                 version: "0.8.19",
                 settings: {
                     optimizer: {
                         enabled: true,
-                        runs: 100,
+                        runs: 100
                     },
-                    viaIR: true,
-                },
+                    viaIR: true
+                }
             },
             {
                 version: "0.8.27",
                 settings: {
                     optimizer: {
                         enabled: true,
-                        runs: 100,
+                        runs: 100
                     },
-                    viaIR: true,
-                },
+                    viaIR: true
+                }
             },
             {
                 version: "0.7.5",
                 settings: {
                     optimizer: {
                         enabled: true,
-                        runs: 100,
+                        runs: 100
                     },
-                    viaIR: true,
-                },
-            },
-        ],
+                    viaIR: true
+                }
+            }
+        ]
     },
     networks: {
         hardhat: {
@@ -64,17 +65,17 @@ module.exports = {
             forking: {
                 url: MAINNET_RPC_URL,
                 blockNumber: 22486574
-            },
+            }
         },
         localhost: {
             chainId: 31337,
             forking: {
-                url: MAINNET_RPC_URL,
+                url: MAINNET_RPC_URL
             },
             ignition: {
                 blockPollingInterval: 1_000,
-                requiredConfirmations: 1,
-            },
+                requiredConfirmations: 1
+            }
         },
         sepolia: {
             url: SEPOLIA_RPC_URL,
@@ -82,21 +83,27 @@ module.exports = {
             chainId: 11155111,
             ignition: {
                 blockPollingInterval: 1_000,
-                requiredConfirmations: 1,
-            },
-        },
+                requiredConfirmations: 1
+            }
+        }
+    },
+    typechain: {
+        outDir: "typechain",
+        target: "ethers-v6",
+        alwaysGenerateOverloads: true,
+        dontOverrideCompile: false
     },
     etherscan: {
-        apiKey: ETHERSCAN_API_KEY,
+        apiKey: ETHERSCAN_API_KEY
     },
     gasReporter: {
         enabled: true,
         outputFile: "./test-reports/gas-report.txt",
         noColors: true,
-        currency: "USD",
+        currency: "USD"
         // coinmarketcap: COINMARKETCAP_API_KEY,
     },
     mocha: {
-        timeout: 300_000,
-    },
+        timeout: 300_000
+    }
 };

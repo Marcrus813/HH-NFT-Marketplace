@@ -5,15 +5,15 @@ const { ERC721Abi } = require("../../utils/blockchain/abis/erc721");
 const tokenContracts = [
     {
         name: "Doodles",
-        address: "0x8a90CAb2b38dba80c64b7734e58Ee1dB38B8992e".toLowerCase(),
+        address: "0x8a90CAb2b38dba80c64b7734e58Ee1dB38B8992e",
     },
     {
         name: "BoredApeYachtClub",
-        address: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D".toLowerCase(),
+        address: "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
     },
     {
         name: "LilPudgys",
-        address: "0x524cAB2ec69124574082676e6F654a18df49A048".toLowerCase(),
+        address: "0x524cAB2ec69124574082676e6F654a18df49A048",
     },
 ];
 

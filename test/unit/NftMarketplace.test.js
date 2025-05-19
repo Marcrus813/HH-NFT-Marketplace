@@ -2,28 +2,28 @@ const { ethers, ignition } = require("hardhat");
 const { expect } = require("chai");
 
 const {
-    loadFixture,
+    loadFixture
 } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const { supportedTokens } = require("../../configs/contracts/supportedTokens");
 const NftMarketplaceModules = require("../../ignition/modules/00-NftMarketplace");
 
 const {
-    aggregatorV3InterfaceAbi,
+    aggregatorV3InterfaceAbi
 } = require("../../utils/blockchain/abis/aggregatorV3Interface");
 
 const {
     supplyToken,
     approveAllowance,
     transferNft,
-    approveNft,
+    approveNft
 } = require("../../utils/blockchain/mainnetMock");
 const {
-    ERC20WhaleAddress,
+    ERC20WhaleAddress
 } = require("../../configs/contracts/erc20WhaleAddress");
 
 const {
     tokenContracts: NFTTokens,
-    getTokenInfo,
+    getTokenInfo
 } = require("../../configs/contracts/nftAddress");
 
 describe("NftMarketplace", () => {
@@ -34,16 +34,15 @@ describe("NftMarketplace", () => {
 
     let initialEthBalanceMap = new Map();
 
-    const usdcAddress = supportedTokens[0].toLowerCase();
-    const daiAddress = supportedTokens[1].toLowerCase();
-    const linkAddress = supportedTokens[2].toLowerCase();
-    const uniAddress = supportedTokens[3].toLowerCase();
-    const wBtcAddress = supportedTokens[4].toLowerCase();
-    const wEthAddress =
-        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2".toLowerCase();
+    const usdcAddress = supportedTokens[0];
+    const daiAddress = supportedTokens[1];
+    const linkAddress = supportedTokens[2];
+    const uniAddress = supportedTokens[3];
+    const wBtcAddress = supportedTokens[4];
+    const wEthAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
     const zeroAddress = "0x0000000000000000000000000000000000000000";
 
-    const sxtAddress = "0xe6bfd33f52d82ccb5b37e16d3dd81f9ffdabb195";
+    const sxtAddress = "0xE6Bfd33F52d82Ccb5b37E16D3dD81f9FFDAbB195";
     const tetherAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
     async function deployFixture() {
@@ -58,21 +57,27 @@ describe("NftMarketplace", () => {
         NftMarketplaceAddress = await NftMarketplace.getAddress();
         [deployer, ...clientAccounts] = await ethers.getSigners();
         const deployerInitialEthBalance = await ethers.provider.getBalance(
-            deployer.address,
+            deployer.address
         );
         initialEthBalanceMap.set(deployer.address, deployerInitialEthBalance);
         for (const clientAccount of clientAccounts) {
             const clientInitialEthBalance = await ethers.provider.getBalance(
-                clientAccount.address,
+                clientAccount.address
             );
             initialEthBalanceMap.set(
                 clientAccount.address,
-                clientInitialEthBalance,
+                clientInitialEthBalance
             );
         }
     });
 
     describe("Tool functions", () => {
+        let NftMarketplaceByDeployer;
+
+        beforeEach(async () => {
+            NftMarketplaceByDeployer = await NftMarketplace.connect(deployer);
+        });
+
         it("Should be able to check whether payment is supported", async () => {
             const ethCheck =
                 await NftMarketplace.checkPaymentSupport(zeroAddress);
@@ -115,22 +120,27 @@ describe("NftMarketplace", () => {
             const supportedPayments =
                 await NftMarketplace.getSupportedPayments();
             expect(supportedPayments.length).to.be.equals(
-                supportedTokens.length + 1,
+                supportedTokens.length + 1
             );
             expect(
-                supportedPayments[supportedPayments.length - 1].toLowerCase(),
+                supportedPayments[supportedPayments.length - 1]
             ).to.be.equals(wEthAddress);
-            expect(supportedPayments[0].toLowerCase()).to.be.equals(
-                usdcAddress,
-            );
-            expect(supportedPayments[1].toLowerCase()).to.be.equals(daiAddress);
-            expect(supportedPayments[2].toLowerCase()).to.be.equals(
-                linkAddress,
-            );
-            expect(supportedPayments[3].toLowerCase()).to.be.equals(uniAddress);
-            expect(supportedPayments[4].toLowerCase()).to.be.equals(
-                wBtcAddress,
-            );
+            expect(supportedPayments[0]).to.be.equals(usdcAddress);
+            expect(supportedPayments[1]).to.be.equals(daiAddress);
+            expect(supportedPayments[2]).to.be.equals(linkAddress);
+            expect(supportedPayments[3]).to.be.equals(uniAddress);
+            expect(supportedPayments[4]).to.be.equals(wBtcAddress);
+        });
+
+        it("Should revert when requesting not-listed token", async () => {
+            await expect(
+                NftMarketplaceByDeployer.getListingInfo(NFTTokens[0].address, 1)
+            )
+                .to.be.revertedWithCustomError(
+                    NftMarketplaceByDeployer,
+                    "NftMarketplace__TokenNotListed"
+                )
+                .withArgs(NFTTokens[0].address, 1);
         });
 
         it("Should provide the correct price feeds", async () => {
@@ -157,11 +167,11 @@ describe("NftMarketplace", () => {
             describe("Convert to ETH", () => {
                 it("Should revert if requested not supported tokens", async () => {
                     await expect(
-                        NftMarketplace.convertToEth(tetherAddress, BigInt(1e6)),
+                        NftMarketplace.convertToEth(tetherAddress, BigInt(1e6))
                     )
                         .to.be.revertedWithCustomError(
                             NftMarketplace,
-                            "NftMarketplace__PaymentNotSupported",
+                            "NftMarketplace__PaymentNotSupported"
                         )
                         .withArgs(tetherAddress);
                 });
@@ -171,14 +181,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertToEth(
                         usdcAddress,
-                        1000000n,
+                        1000000n
                     );
                     expect(result).to.be.equals(feedAnswer);
                 });
@@ -188,14 +198,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertToEth(
                         daiAddress,
-                        BigInt(1e18),
+                        BigInt(1e18)
                     );
                     expect(result).to.be.equals(feedAnswer);
                 });
@@ -205,14 +215,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertToEth(
                         linkAddress,
-                        BigInt(1e18),
+                        BigInt(1e18)
                     );
                     expect(result).to.be.equals(feedAnswer);
                 });
@@ -222,14 +232,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertToEth(
                         uniAddress,
-                        BigInt(1e18),
+                        BigInt(1e18)
                     );
                     expect(result).to.be.equals(feedAnswer);
                 });
@@ -239,17 +249,17 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertToEth(
                         wBtcAddress,
-                        BigInt(1e8),
+                        BigInt(1e8)
                     );
                     expect(result).to.be.equals(
-                        feedAnswer * BigInt(1e10) /** 18-8 */,
+                        feedAnswer * BigInt(1e10) /** 18-8 */
                     );
                 });
             });
@@ -259,12 +269,12 @@ describe("NftMarketplace", () => {
                     await expect(
                         NftMarketplace.convertFromEth(
                             tetherAddress,
-                            BigInt(1e6),
-                        ),
+                            BigInt(1e6)
+                        )
                     )
                         .to.be.revertedWithCustomError(
                             NftMarketplace,
-                            "NftMarketplace__PaymentNotSupported",
+                            "NftMarketplace__PaymentNotSupported"
                         )
                         .withArgs(tetherAddress);
                 });
@@ -274,14 +284,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertFromEth(
                         usdcAddress,
-                        feedAnswer,
+                        feedAnswer
                     );
                     expect(result).to.be.equals(BigInt(1e6));
                 });
@@ -291,14 +301,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertFromEth(
                         daiAddress,
-                        feedAnswer,
+                        feedAnswer
                     );
                     expect(result).to.be.equals(BigInt(1e18));
                 });
@@ -308,14 +318,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertFromEth(
                         daiAddress,
-                        feedAnswer,
+                        feedAnswer
                     );
                     expect(result).to.be.equals(BigInt(1e18));
                 });
@@ -325,14 +335,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertFromEth(
                         uniAddress,
-                        feedAnswer,
+                        feedAnswer
                     );
                     expect(result).to.be.equals(BigInt(1e18));
                 });
@@ -342,14 +352,14 @@ describe("NftMarketplace", () => {
                     const priceFeed = await ethers.getContractAt(
                         aggregatorV3InterfaceAbi,
                         feedAddress,
-                        deployer,
+                        deployer
                     );
                     const { answer: feedAnswer } =
                         await priceFeed.latestRoundData();
 
                     const result = await NftMarketplace.convertFromEth(
                         wBtcAddress,
-                        feedAnswer * BigInt(1e10), // 18(ETH decimal) - 8(price feed decimal)
+                        feedAnswer * BigInt(1e10) // 18(ETH decimal) - 8(price feed decimal)
                     );
                     expect(result).to.be.equals(BigInt(1e8));
                 });
@@ -383,37 +393,37 @@ describe("NftMarketplace", () => {
                     usdcAddress,
                     ERC20WhaleAddress.get(usdcAddress),
                     usdcValidAccount,
-                    BigInt(10000e6),
+                    BigInt(10000e6)
                 );
                 await supplyToken(
                     daiAddress,
                     ERC20WhaleAddress.get(daiAddress),
                     daiValidAccount,
-                    BigInt(10000e18),
+                    BigInt(10000e18)
                 );
                 await supplyToken(
                     linkAddress,
                     ERC20WhaleAddress.get(linkAddress),
                     linkValidAccount,
-                    BigInt(10000e18),
+                    BigInt(10000e18)
                 );
                 await supplyToken(
                     uniAddress,
                     ERC20WhaleAddress.get(uniAddress),
                     uniValidAccount,
-                    BigInt(10000e18),
+                    BigInt(10000e18)
                 );
                 await supplyToken(
                     wBtcAddress,
                     ERC20WhaleAddress.get(wBtcAddress),
                     wBtcValidAccount,
-                    BigInt(100e8),
+                    BigInt(100e8)
                 );
                 await supplyToken(
                     wEthAddress,
                     ERC20WhaleAddress.get(wEthAddress),
                     wEthValidAccount,
-                    BigInt(500e18),
+                    BigInt(500e18)
                 );
             }
 
@@ -426,8 +436,6 @@ describe("NftMarketplace", () => {
                 });
                 describe("Supplying ETH", () => {
                     beforeEach(async () => {
-                        await NftMarketplace.connect(deployer);
-
                         buyer = deployer;
                         paymentToken = zeroAddress;
                         preferredToken = zeroAddress;
@@ -435,26 +443,28 @@ describe("NftMarketplace", () => {
                     });
                     it("Should return false when not enough sent", async () => {
                         value = ethers.parseEther("0.009");
-                        const verification = await NftMarketplace.verifyPayment(
-                            buyer,
-                            value,
-                            isStrictPayment,
-                            paymentToken,
-                            preferredToken,
-                            targetPrice,
-                        );
+                        const verification =
+                            await NftMarketplaceByDeployer.verifyPayment(
+                                buyer,
+                                value,
+                                isStrictPayment,
+                                paymentToken,
+                                preferredToken,
+                                targetPrice
+                            );
                         expect(verification).to.be.false;
                     });
                     it("Should return true when enough sent", async () => {
                         value = ethers.parseEther("0.011");
-                        const verification = await NftMarketplace.verifyPayment(
-                            buyer,
-                            value,
-                            isStrictPayment,
-                            paymentToken,
-                            preferredToken,
-                            targetPrice,
-                        );
+                        const verification =
+                            await NftMarketplaceByDeployer.verifyPayment(
+                                buyer,
+                                value,
+                                isStrictPayment,
+                                paymentToken,
+                                preferredToken,
+                                targetPrice
+                            );
                         expect(verification).to.be.true;
                     });
                 });
@@ -469,14 +479,15 @@ describe("NftMarketplace", () => {
                     it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                         buyer = wBtcValidAccount;
 
-                        const verification = await NftMarketplace.verifyPayment(
-                            buyer,
-                            value,
-                            isStrictPayment,
-                            paymentToken,
-                            preferredToken,
-                            targetPrice,
-                        );
+                        const verification =
+                            await NftMarketplaceByDeployer.verifyPayment(
+                                buyer,
+                                value,
+                                isStrictPayment,
+                                paymentToken,
+                                preferredToken,
+                                targetPrice
+                            );
 
                         expect(verification).to.be.false;
                     });
@@ -489,7 +500,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
                         expect(verification).to.be.false;
                     });
@@ -500,7 +511,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -509,7 +520,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -521,7 +532,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -530,7 +541,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.true;
@@ -553,7 +564,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -567,7 +578,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
                         expect(verification).to.be.false;
                     });
@@ -578,7 +589,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -587,7 +598,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -599,7 +610,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -608,7 +619,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.true;
@@ -631,7 +642,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -645,7 +656,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -657,7 +668,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -666,7 +677,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -678,7 +689,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -687,7 +698,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.true;
@@ -710,7 +721,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -724,7 +735,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -736,7 +747,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -745,7 +756,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -757,7 +768,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -766,7 +777,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.true;
@@ -789,7 +800,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -803,7 +814,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -815,7 +826,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -824,7 +835,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -836,7 +847,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -845,7 +856,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.true;
@@ -868,7 +879,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -882,7 +893,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -894,7 +905,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -903,7 +914,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.false;
@@ -915,7 +926,7 @@ describe("NftMarketplace", () => {
                             paymentToken,
                             buyer.address,
                             NftMarketplaceAddress,
-                            targetPrice,
+                            targetPrice
                         );
 
                         const verification = await NftMarketplace.verifyPayment(
@@ -924,7 +935,7 @@ describe("NftMarketplace", () => {
                             isStrictPayment,
                             paymentToken,
                             preferredToken,
-                            targetPrice,
+                            targetPrice
                         );
 
                         expect(verification).to.be.true;
@@ -937,8 +948,6 @@ describe("NftMarketplace", () => {
                 });
                 describe("Supplying ETH", () => {
                     beforeEach(async () => {
-                        await NftMarketplace.connect(deployer);
-
                         buyer = deployer;
                         paymentToken = zeroAddress;
                     });
@@ -952,26 +961,26 @@ describe("NftMarketplace", () => {
                             value = ethers.parseEther("0.009");
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.false;
                         });
                         it("Should return true when enough sent", async () => {
                             value = ethers.parseEther("0.011");
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.true;
                         });
@@ -985,26 +994,26 @@ describe("NftMarketplace", () => {
                             value = ethers.parseEther("0.009");
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.false;
                         });
                         it("Should return true when enough sent", async () => {
                             value = ethers.parseEther("0.011");
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.true;
                         });
@@ -1014,13 +1023,13 @@ describe("NftMarketplace", () => {
                             preferredToken = usdcAddress;
 
                             const priceFeedAddress =
-                                await NftMarketplace.getPriceFeed(
-                                    preferredToken,
+                                await NftMarketplaceByDeployer.getPriceFeed(
+                                    preferredToken
                                 );
                             const priceFeed = await ethers.getContractAt(
                                 aggregatorV3InterfaceAbi,
                                 priceFeedAddress,
-                                deployer,
+                                deployer
                             );
                             const { answer: feedAnswer } =
                                 await priceFeed.latestRoundData();
@@ -1031,25 +1040,25 @@ describe("NftMarketplace", () => {
                             value = value - 1n;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.false;
                         });
                         it("Should return true when enough sent", async () => {
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.true;
                         });
@@ -1059,13 +1068,13 @@ describe("NftMarketplace", () => {
                             preferredToken = daiAddress;
 
                             const priceFeedAddress =
-                                await NftMarketplace.getPriceFeed(
-                                    preferredToken,
+                                await NftMarketplaceByDeployer.getPriceFeed(
+                                    preferredToken
                                 );
                             const priceFeed = await ethers.getContractAt(
                                 aggregatorV3InterfaceAbi,
                                 priceFeedAddress,
-                                deployer,
+                                deployer
                             );
                             const { answer: feedAnswer } =
                                 await priceFeed.latestRoundData();
@@ -1076,25 +1085,25 @@ describe("NftMarketplace", () => {
                             value = value - 1n;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.false;
                         });
                         it("Should return true when enough sent", async () => {
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.true;
                         });
@@ -1104,13 +1113,13 @@ describe("NftMarketplace", () => {
                             preferredToken = linkAddress;
 
                             const priceFeedAddress =
-                                await NftMarketplace.getPriceFeed(
-                                    preferredToken,
+                                await NftMarketplaceByDeployer.getPriceFeed(
+                                    preferredToken
                                 );
                             const priceFeed = await ethers.getContractAt(
                                 aggregatorV3InterfaceAbi,
                                 priceFeedAddress,
-                                deployer,
+                                deployer
                             );
                             const { answer: feedAnswer } =
                                 await priceFeed.latestRoundData();
@@ -1121,26 +1130,26 @@ describe("NftMarketplace", () => {
                             value = value - 1n;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.false;
                         });
                         it("Should return true when enough sent", async () => {
                             value = targetPrice;
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.true;
                         });
@@ -1150,13 +1159,13 @@ describe("NftMarketplace", () => {
                             preferredToken = uniAddress;
 
                             const priceFeedAddress =
-                                await NftMarketplace.getPriceFeed(
-                                    preferredToken,
+                                await NftMarketplaceByDeployer.getPriceFeed(
+                                    preferredToken
                                 );
                             const priceFeed = await ethers.getContractAt(
                                 aggregatorV3InterfaceAbi,
                                 priceFeedAddress,
-                                deployer,
+                                deployer
                             );
                             const { answer: feedAnswer } =
                                 await priceFeed.latestRoundData();
@@ -1167,25 +1176,25 @@ describe("NftMarketplace", () => {
                             value = value - 1n;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.false;
                         });
                         it("Should return true when enough sent", async () => {
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.true;
                         });
@@ -1195,34 +1204,34 @@ describe("NftMarketplace", () => {
                             preferredToken = wBtcAddress;
 
                             targetPrice = BigInt(1e8); // 1 Token
-                            value = await NftMarketplace.convertToEth(
+                            value = await NftMarketplaceByDeployer.convertToEth(
                                 wBtcAddress,
-                                targetPrice,
+                                targetPrice
                             );
                         });
                         it("Should return false when not enough sent", async () => {
                             value = value - 1n;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.false;
                         });
                         it("Should return true when enough sent", async () => {
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             expect(verification).to.be.true;
                         });
@@ -1243,13 +1252,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1258,13 +1267,13 @@ describe("NftMarketplace", () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1276,17 +1285,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                targetPrice,
+                                targetPrice
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1298,17 +1307,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                targetPrice,
+                                targetPrice
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1323,13 +1332,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1338,13 +1347,13 @@ describe("NftMarketplace", () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1356,17 +1365,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                targetPrice,
+                                targetPrice
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1378,17 +1387,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                targetPrice,
+                                targetPrice
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1401,27 +1410,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e6);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1430,13 +1439,13 @@ describe("NftMarketplace", () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1448,17 +1457,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1470,17 +1479,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1493,27 +1502,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1522,13 +1531,13 @@ describe("NftMarketplace", () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1540,17 +1549,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1562,17 +1571,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1585,27 +1594,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1614,13 +1623,13 @@ describe("NftMarketplace", () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1632,17 +1641,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1654,17 +1663,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1677,27 +1686,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1706,13 +1715,13 @@ describe("NftMarketplace", () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1724,17 +1733,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1746,17 +1755,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1769,27 +1778,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e8);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1798,13 +1807,13 @@ describe("NftMarketplace", () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1816,17 +1825,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1838,17 +1847,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1869,22 +1878,22 @@ describe("NftMarketplace", () => {
 
                             const expectedEthAmount = targetPrice;
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1893,13 +1902,13 @@ describe("NftMarketplace", () => {
                             buyer = usdcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1911,17 +1920,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1933,17 +1942,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -1957,27 +1966,27 @@ describe("NftMarketplace", () => {
                             targetPrice = ethers.parseEther("0.01");
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -1986,13 +1995,13 @@ describe("NftMarketplace", () => {
                             buyer = usdcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2004,17 +2013,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2026,17 +2035,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2049,27 +2058,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e6);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2078,13 +2087,13 @@ describe("NftMarketplace", () => {
                             buyer = usdcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2096,17 +2105,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2118,17 +2127,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2141,27 +2150,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2170,13 +2179,13 @@ describe("NftMarketplace", () => {
                             buyer = usdcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2188,17 +2197,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2210,17 +2219,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2233,27 +2242,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2262,13 +2271,13 @@ describe("NftMarketplace", () => {
                             buyer = usdcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2280,17 +2289,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2302,17 +2311,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2325,27 +2334,27 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2354,13 +2363,13 @@ describe("NftMarketplace", () => {
                             buyer = usdcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2372,17 +2381,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2394,17 +2403,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2417,28 +2426,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e8);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2447,13 +2456,13 @@ describe("NftMarketplace", () => {
                             buyer = usdcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2465,17 +2474,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2487,17 +2496,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2518,22 +2527,22 @@ describe("NftMarketplace", () => {
 
                             const expectedEthAmount = targetPrice;
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2542,13 +2551,13 @@ describe("NftMarketplace", () => {
                             buyer = daiValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2560,17 +2569,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2582,17 +2591,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2606,27 +2615,27 @@ describe("NftMarketplace", () => {
                             targetPrice = ethers.parseEther("0.01");
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2635,13 +2644,13 @@ describe("NftMarketplace", () => {
                             buyer = daiValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2653,17 +2662,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2675,17 +2684,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2699,28 +2708,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e6);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2729,13 +2738,13 @@ describe("NftMarketplace", () => {
                             buyer = daiValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2747,17 +2756,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2769,17 +2778,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2793,28 +2802,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2823,13 +2832,13 @@ describe("NftMarketplace", () => {
                             buyer = daiValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2841,17 +2850,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2863,17 +2872,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2887,28 +2896,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2917,13 +2926,13 @@ describe("NftMarketplace", () => {
                             buyer = daiValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2935,17 +2944,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -2957,17 +2966,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -2981,28 +2990,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3011,13 +3020,13 @@ describe("NftMarketplace", () => {
                             buyer = daiValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3029,17 +3038,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3051,17 +3060,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3075,28 +3084,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e8);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3105,13 +3114,13 @@ describe("NftMarketplace", () => {
                             buyer = daiValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3123,17 +3132,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3145,17 +3154,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3176,22 +3185,22 @@ describe("NftMarketplace", () => {
 
                             const expectedEthAmount = targetPrice;
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3200,13 +3209,13 @@ describe("NftMarketplace", () => {
                             buyer = linkValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3218,17 +3227,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3240,17 +3249,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3264,27 +3273,27 @@ describe("NftMarketplace", () => {
                             targetPrice = ethers.parseEther("0.01");
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3293,13 +3302,13 @@ describe("NftMarketplace", () => {
                             buyer = linkValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3311,17 +3320,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3333,17 +3342,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3357,28 +3366,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e6);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3387,13 +3396,13 @@ describe("NftMarketplace", () => {
                             buyer = linkValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3405,17 +3414,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3427,17 +3436,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3451,28 +3460,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3481,13 +3490,13 @@ describe("NftMarketplace", () => {
                             buyer = linkValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3499,17 +3508,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3521,17 +3530,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3545,28 +3554,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3575,13 +3584,13 @@ describe("NftMarketplace", () => {
                             buyer = linkValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3593,17 +3602,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3615,17 +3624,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3639,28 +3648,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3669,13 +3678,13 @@ describe("NftMarketplace", () => {
                             buyer = linkValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3687,17 +3696,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3709,17 +3718,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3733,28 +3742,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e8);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3763,13 +3772,13 @@ describe("NftMarketplace", () => {
                             buyer = linkValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3781,17 +3790,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3803,17 +3812,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3834,22 +3843,22 @@ describe("NftMarketplace", () => {
 
                             const expectedEthAmount = targetPrice;
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3858,13 +3867,13 @@ describe("NftMarketplace", () => {
                             buyer = uniValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3876,17 +3885,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3898,17 +3907,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -3922,27 +3931,27 @@ describe("NftMarketplace", () => {
                             targetPrice = ethers.parseEther("0.01");
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3951,13 +3960,13 @@ describe("NftMarketplace", () => {
                             buyer = uniValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3969,17 +3978,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -3991,17 +4000,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4015,28 +4024,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e6);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4045,13 +4054,13 @@ describe("NftMarketplace", () => {
                             buyer = uniValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4063,17 +4072,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4085,17 +4094,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4109,28 +4118,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4139,13 +4148,13 @@ describe("NftMarketplace", () => {
                             buyer = uniValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4157,17 +4166,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4179,17 +4188,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4203,28 +4212,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4233,13 +4242,13 @@ describe("NftMarketplace", () => {
                             buyer = uniValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4251,17 +4260,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4273,17 +4282,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4297,28 +4306,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4327,13 +4336,13 @@ describe("NftMarketplace", () => {
                             buyer = uniValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4345,17 +4354,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4367,17 +4376,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4391,28 +4400,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e8);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4421,13 +4430,13 @@ describe("NftMarketplace", () => {
                             buyer = uniValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4439,17 +4448,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4461,17 +4470,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4492,22 +4501,22 @@ describe("NftMarketplace", () => {
 
                             const expectedEthAmount = targetPrice;
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4516,13 +4525,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4534,17 +4543,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4556,17 +4565,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4580,27 +4589,27 @@ describe("NftMarketplace", () => {
                             targetPrice = ethers.parseEther("0.01");
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4609,13 +4618,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4627,17 +4636,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4649,17 +4658,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4673,28 +4682,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e6);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4703,13 +4712,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4721,17 +4730,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4743,17 +4752,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4767,28 +4776,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4797,13 +4806,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4815,17 +4824,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4837,17 +4846,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4861,28 +4870,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4891,13 +4900,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4909,17 +4918,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4931,17 +4940,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -4955,28 +4964,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e18);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -4985,13 +4994,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -5003,17 +5012,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -5025,17 +5034,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -5049,28 +5058,28 @@ describe("NftMarketplace", () => {
                             targetPrice = BigInt(1e8);
 
                             const expectedEthAmount =
-                                await NftMarketplace.convertToEth(
+                                await NftMarketplaceByDeployer.convertToEth(
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             minimalAllowance =
-                                await NftMarketplace.convertFromEth(
+                                await NftMarketplaceByDeployer.convertFromEth(
                                     paymentToken,
-                                    expectedEthAmount,
+                                    expectedEthAmount
                                 );
                         });
                         it("Should return false when buyer has insufficient balance & market has insufficient allowance", async () => {
                             buyer = wEthValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -5079,13 +5088,13 @@ describe("NftMarketplace", () => {
                             buyer = wBtcValidAccount;
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -5097,17 +5106,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.false;
@@ -5119,17 +5128,17 @@ describe("NftMarketplace", () => {
                                 paymentToken,
                                 buyer.address,
                                 NftMarketplaceAddress,
-                                minimalAllowance,
+                                minimalAllowance
                             );
 
                             const verification =
-                                await NftMarketplace.verifyPayment(
+                                await NftMarketplaceByDeployer.verifyPayment(
                                     buyer,
                                     value,
                                     isStrictPayment,
                                     paymentToken,
                                     preferredToken,
-                                    targetPrice,
+                                    targetPrice
                                 );
 
                             expect(verification).to.be.true;
@@ -5148,33 +5157,27 @@ describe("NftMarketplace", () => {
         });
     });
     describe("Initial state", () => {
+        let NftMarketplaceByDeployer;
+
+        beforeEach(async () => {
+            NftMarketplaceByDeployer = await NftMarketplace.connect(deployer);
+        });
+
         describe("Storage variables", () => {
             it("Should have correct `s_supportedPayments`", async () => {
                 const supportedPayments =
-                    await NftMarketplace.getSupportedPayments();
+                    await NftMarketplaceByDeployer.getSupportedPayments();
                 expect(supportedPayments.length).to.be.equals(
-                    supportedTokens.length + 1,
+                    supportedTokens.length + 1
                 );
                 expect(
-                    supportedPayments[
-                        supportedPayments.length - 1
-                    ].toLowerCase(),
+                    supportedPayments[supportedPayments.length - 1]
                 ).to.be.equals(wEthAddress);
-                expect(supportedPayments[0].toLowerCase()).to.be.equals(
-                    usdcAddress,
-                );
-                expect(supportedPayments[1].toLowerCase()).to.be.equals(
-                    daiAddress,
-                );
-                expect(supportedPayments[2].toLowerCase()).to.be.equals(
-                    linkAddress,
-                );
-                expect(supportedPayments[3].toLowerCase()).to.be.equals(
-                    uniAddress,
-                );
-                expect(supportedPayments[4].toLowerCase()).to.be.equals(
-                    wBtcAddress,
-                );
+                expect(supportedPayments[0]).to.be.equals(usdcAddress);
+                expect(supportedPayments[1]).to.be.equals(daiAddress);
+                expect(supportedPayments[2]).to.be.equals(linkAddress);
+                expect(supportedPayments[3]).to.be.equals(uniAddress);
+                expect(supportedPayments[4]).to.be.equals(wBtcAddress);
             });
             it("Should provide the correct price feeds", async () => {
                 const properUsdcFeed =
@@ -5188,13 +5191,19 @@ describe("NftMarketplace", () => {
                 const properWbtcFeed =
                     "0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23";
 
-                const usdcFeed = await NftMarketplace.getPriceFeed(usdcAddress);
-                const daiFeed = await NftMarketplace.getPriceFeed(daiAddress);
-                const linkFeed = await NftMarketplace.getPriceFeed(linkAddress);
-                const uniFeed = await NftMarketplace.getPriceFeed(uniAddress);
-                const wBtcFeed = await NftMarketplace.getPriceFeed(wBtcAddress);
+                const usdcFeed =
+                    await NftMarketplaceByDeployer.getPriceFeed(usdcAddress);
+                const daiFeed =
+                    await NftMarketplaceByDeployer.getPriceFeed(daiAddress);
+                const linkFeed =
+                    await NftMarketplaceByDeployer.getPriceFeed(linkAddress);
+                const uniFeed =
+                    await NftMarketplaceByDeployer.getPriceFeed(uniAddress);
+                const wBtcFeed =
+                    await NftMarketplaceByDeployer.getPriceFeed(wBtcAddress);
 
-                const wEthFeed = await NftMarketplace.getPriceFeed(wEthAddress);
+                const wEthFeed =
+                    await NftMarketplaceByDeployer.getPriceFeed(wEthAddress);
 
                 expect(usdcFeed).to.be.equals(properUsdcFeed);
                 expect(daiFeed).to.be.equals(properDaiFeed);
@@ -5210,17 +5219,20 @@ describe("NftMarketplace", () => {
 
                 const randomId = Math.floor(Math.random());
                 await expect(
-                    NftMarketplace.getListingInfo(randomAddress, randomId),
+                    NftMarketplaceByDeployer.getListingInfo(
+                        randomAddress,
+                        randomId
+                    )
                 )
                     .to.be.revertedWithCustomError(
-                        NftMarketplace,
-                        "NftMarketplace__TokenNotListed",
+                        NftMarketplaceByDeployer,
+                        "NftMarketplace__TokenNotListed"
                     )
                     .withArgs(randomAddress, randomId);
             });
             it("Should have empty `s_activeListings`", async () => {
                 const activeListings =
-                    await NftMarketplace.getActiveListingKeys();
+                    await NftMarketplaceByDeployer.getActiveListingKeys();
 
                 expect(activeListings.length).to.be.equals(0);
             });
@@ -5230,10 +5242,11 @@ describe("NftMarketplace", () => {
                 const randomAddress = randomWallet.address;
                 const randomId = Math.floor(Math.random());
 
-                const paddedIndex = await NftMarketplace.getListingPaddedIndex(
-                    randomAddress,
-                    randomId,
-                );
+                const paddedIndex =
+                    await NftMarketplaceByDeployer.getListingPaddedIndex(
+                        randomAddress,
+                        randomId
+                    );
                 expect(paddedIndex).to.be.equals(0);
             });
             it("Should have empty `s_proceeds`", async () => {
@@ -5243,10 +5256,11 @@ describe("NftMarketplace", () => {
                 const randomWallet1 = ethers.Wallet.createRandom();
                 const randomAddress1 = randomWallet1.address;
 
-                const proceeds = await NftMarketplace.getSupplierProceeds(
-                    randomAddress0,
-                    randomAddress1,
-                );
+                const proceeds =
+                    await NftMarketplaceByDeployer.getSupplierProceeds(
+                        randomAddress0,
+                        randomAddress1
+                    );
                 expect(proceeds).to.be.equals(0);
             });
         });
@@ -5263,6 +5277,10 @@ describe("NftMarketplace", () => {
         let boredApeYachtClubHolder;
         let lilPudgysHolder;
 
+        let NftMarketplaceByDoodleHolder;
+        let NftMarketplaceByBaycHolder;
+        let NftMarketplaceBylilPudgysHolder;
+
         beforeEach(async () => {
             doodleAddress = NFTTokens[0].address;
             boredApeYachtClubAddress = NFTTokens[1].address;
@@ -5271,6 +5289,14 @@ describe("NftMarketplace", () => {
             doodleHolder = clientAccounts[0];
             boredApeYachtClubHolder = clientAccounts[1];
             lilPudgysHolder = clientAccounts[2];
+
+            NftMarketplaceByDoodleHolder =
+                await NftMarketplace.connect(doodleHolder);
+            NftMarketplaceByBaycHolder = await NftMarketplace.connect(
+                boredApeYachtClubHolder
+            );
+            NftMarketplaceBylilPudgysHolder =
+                await NftMarketplace.connect(lilPudgysHolder);
 
             const tokenInfo = await getTokenInfo();
             doodlesTokens = tokenInfo.doodlesTokens;
@@ -5287,7 +5313,7 @@ describe("NftMarketplace", () => {
                     doodleAddress,
                     tokenOwner,
                     doodleHolder,
-                    tokenId,
+                    tokenId
                 );
             }
 
@@ -5305,7 +5331,7 @@ describe("NftMarketplace", () => {
                     boredApeYachtClubAddress,
                     tokenOwner,
                     boredApeYachtClubHolder,
-                    tokenId,
+                    tokenId
                 );
             }
 
@@ -5319,103 +5345,258 @@ describe("NftMarketplace", () => {
                     lilPudgysAddress,
                     tokenOwner,
                     lilPudgysHolder,
-                    tokenId,
+                    tokenId
                 );
             }
         });
-        it("Should revert when listing with not supported tokens", async () => {
-            const tokenAddress = NFTTokens[0].address;
-            const token = doodlesTokens[0];
-            const tokenId = token.id;
+        describe("Precautions", () => {
+            it("Should revert when listing with not supported tokens", async () => {
+                const tokenAddress = doodleAddress;
+                const token = doodlesTokens[0];
+                const tokenId = token.id;
 
-            const tokenOwner = doodleHolder;
+                const preferredPayment = tetherAddress;
+                const price = ethers.parseEther("0.05");
+                const isStrictPayment = true;
 
-            const preferredPayment = tetherAddress;
-            const price = ethers.parseEther("0.05");
-            const isStrictPayment = true;
-
-            await expect(
-                NftMarketplace.connect(tokenOwner).listNft(
-                    tokenAddress,
-                    tokenId,
-                    preferredPayment,
-                    price,
-                    isStrictPayment,
-                ),
-            )
-                .to.be.revertedWithCustomError(
-                    NftMarketplace,
-                    "NftMarketplace__PaymentNotSupported",
+                await expect(
+                    NftMarketplaceByDoodleHolder.listNft(
+                        tokenAddress,
+                        tokenId,
+                        preferredPayment,
+                        price,
+                        isStrictPayment
+                    )
                 )
-                .withArgs(tetherAddress);
-        });
+                    .to.be.revertedWithCustomError(
+                        NftMarketplace,
+                        "NftMarketplace__PaymentNotSupported"
+                    )
+                    .withArgs(tetherAddress);
+            });
 
-        it("Should revert if listing with price of zero", async () => {
-            const tokenAddress = NFTTokens[0].address;
-            const token = doodlesTokens[0];
-            const tokenId = token.id;
+            it("Should revert if listing with price of zero", async () => {
+                const tokenAddress = doodleAddress;
+                const token = doodlesTokens[0];
+                const tokenId = token.id;
+                const preferredPayment = zeroAddress;
+                const price = 0;
+                const isStrictPayment = true;
 
-            const tokenOwner = doodleHolder;
-            const preferredPayment = zeroAddress;
-            const price = 0;
-            const isStrictPayment = true;
+                await expect(
+                    NftMarketplaceByDoodleHolder.listNft(
+                        tokenAddress,
+                        tokenId,
+                        preferredPayment,
+                        price,
+                        isStrictPayment
+                    )
+                ).to.be.revertedWithCustomError(
+                    NftMarketplace,
+                    "NftMarketplace__PriceIsZero"
+                );
+            });
 
-            await expect(
-                NftMarketplace.connect(tokenOwner).listNft(
+            it("Should revert if listing an already listed token", async () => {
+                const tokenAddress = doodleAddress;
+                const token = doodlesTokens[0];
+                const tokenId = token.id;
+
+                const tokenOwner = doodleHolder;
+                const preferredPayment = zeroAddress;
+                const price = ethers.parseEther("1");
+                const isStrictPayment = true;
+
+                await approveNft(
                     tokenAddress,
-                    tokenId,
-                    preferredPayment,
-                    price,
-                    isStrictPayment,
-                ),
-            ).to.be.revertedWithCustomError(
-                NftMarketplace,
-                "NftMarketplace__PriceIsZero",
-            );
+                    tokenOwner.address,
+                    NftMarketplaceAddress,
+                    tokenId
+                );
+
+                const initialListTxn =
+                    await NftMarketplaceByDoodleHolder.listNft(
+                        tokenAddress,
+                        tokenId,
+                        preferredPayment,
+                        price,
+                        isStrictPayment
+                    );
+                await initialListTxn.wait();
+
+                await expect(
+                    NftMarketplaceByDoodleHolder.listNft(
+                        tokenAddress,
+                        tokenId,
+                        preferredPayment,
+                        price,
+                        isStrictPayment
+                    )
+                )
+                    .to.be.revertedWithCustomError(
+                        NftMarketplace,
+                        "NftMarketplace__AlreadyListed"
+                    )
+                    .withArgs(tokenAddress, tokenId);
+            });
+            it("Should revert if not being listed by token owner", async () => {
+                const tokenAddress = doodleAddress;
+                const token = doodlesTokens[0];
+                const tokenId = token.id;
+
+                const tokenOwner = doodleHolder;
+
+                const preferredPayment = zeroAddress;
+                const price = ethers.parseEther("1");
+                const isStrictPayment = true;
+
+                await approveNft(
+                    tokenAddress,
+                    tokenOwner.address,
+                    NftMarketplaceAddress,
+                    tokenId
+                );
+
+                await expect(
+                    NftMarketplaceByBaycHolder.listNft(
+                        tokenAddress,
+                        tokenId,
+                        preferredPayment,
+                        price,
+                        isStrictPayment
+                    )
+                )
+                    .to.be.revertedWithCustomError(
+                        NftMarketplace,
+                        "NftMarketplace__NotListedByOwner"
+                    )
+                    .withArgs(
+                        tokenAddress,
+                        tokenId,
+                        boredApeYachtClubHolder.address
+                    );
+            });
+            it("Should revert if marketplace is not approved for the token", async () => {
+                const tokenAddress = doodleAddress;
+                const token = doodlesTokens[0];
+                const tokenId = token.id;
+
+                const preferredPayment = zeroAddress;
+                const price = ethers.parseEther("1");
+                const isStrictPayment = true;
+
+                await expect(
+                    NftMarketplaceByDoodleHolder.listNft(
+                        tokenAddress,
+                        tokenId,
+                        preferredPayment,
+                        price,
+                        isStrictPayment
+                    )
+                )
+                    .to.be.revertedWithCustomError(
+                        NftMarketplace,
+                        "NftMarketplace__NotApprovedForMarketplace"
+                    )
+                    .withArgs(tokenAddress, tokenId);
+            });
         });
-
-        it("Should revert if listing an already listed token", async () => {
-            const tokenAddress = NFTTokens[0].address;
-            const token = doodlesTokens[0];
-            const tokenId = token.id;
-
-            const tokenOwner = doodleHolder;
-            const preferredPayment = zeroAddress;
-            const price = ethers.parseEther("1");
-            const isStrictPayment = true;
-
-            await approveNft(
-                tokenAddress,
-                tokenOwner.address,
-                NftMarketplaceAddress,
+        describe("Updating storage", () => {
+            let tokenAddress,
+                token,
                 tokenId,
-            );
-
-            const initialListTxn = await NftMarketplace.connect(
                 tokenOwner,
-            ).listNft(
-                tokenAddress,
-                tokenId,
                 preferredPayment,
                 price,
-                isStrictPayment,
-            );
-            await initialListTxn.wait();
+                isStrictPayment;
 
-            await expect(
-                NftMarketplace.connect(tokenOwner).listNft(
+            async function listNft(
+                _tokenAddress,
+                _tokenId,
+                _preferredPayment,
+                _price,
+                _isStrictPayment
+            ) {
+                const listTxn = await NftMarketplaceByDoodleHolder.listNft(
+                    _tokenAddress,
+                    _tokenId,
+                    _preferredPayment,
+                    _price,
+                    _isStrictPayment
+                );
+
+                await listTxn.wait();
+            }
+
+            beforeEach(async () => {
+                tokenAddress = doodleAddress;
+                token = doodlesTokens[0];
+                tokenId = token.id;
+                tokenOwner = doodleHolder;
+                preferredPayment = zeroAddress;
+                price = ethers.parseEther("1");
+                isStrictPayment = true;
+
+                await approveNft(
+                    tokenAddress,
+                    tokenOwner.address,
+                    NftMarketplaceAddress,
+                    tokenId
+                );
+            });
+            it("Should update `s_listingMap`", async () => {
+                await listNft(
                     tokenAddress,
                     tokenId,
                     preferredPayment,
                     price,
-                    isStrictPayment,
-                ),
-            )
-                .to.be.revertedWithCustomError(
-                    NftMarketplace,
-                    "NftMarketplace__AlreadyListed",
-                )
-                // .withArgs(tokenAddress, tokenId);
+                    isStrictPayment
+                );
+
+                const updatedListing =
+                    await NftMarketplaceByDoodleHolder.getListingInfo(
+                        tokenAddress,
+                        tokenId
+                    );
+
+                const listedPayment = updatedListing.preferredPayment;
+                const listedPrice = updatedListing.price;
+                const listedStrictPayment = updatedListing.strictPayment;
+                const listedSeller = updatedListing.seller;
+
+                expect(listedPayment).to.be.equals(preferredPayment);
+                expect(listedPrice).to.be.equals(ethers.parseEther("1"));
+                expect(listedStrictPayment).to.be.true;
+                expect(listedSeller).to.be.equals(doodleHolder.address);
+            });
+            it("Should update `s_activeListings`", async () => {
+                const activeListingsBefore =
+                    await NftMarketplaceByDoodleHolder.getActiveListingKeys();
+                const activeListingLengthBefore = activeListingsBefore.length;
+
+                await listNft(
+                    tokenAddress,
+                    tokenId,
+                    preferredPayment,
+                    price,
+                    isStrictPayment
+                );
+
+                const activeListingsAfter =
+                    await NftMarketplaceByDoodleHolder.getActiveListingKeys();
+                const activeListingLengthAfter = activeListingsAfter.length;
+                const latestActiveListingKey =
+                    activeListingsAfter[activeListingLengthAfter - 1];
+
+                const listingKeyAddress = latestActiveListingKey.nftAddress;
+                const listingKeyId = latestActiveListingKey.tokenId;
+
+                expect(activeListingLengthAfter).to.be.equals(
+                    activeListingLengthBefore + 1
+                );
+                expect(listingKeyAddress).to.be.equals(tokenAddress);
+                expect(listingKeyId).to.be.equals(tokenId);
+            });
         });
     });
     describe("Buying", () => {});

@@ -18,6 +18,7 @@
         "ethers": "^6.4.0",
         "hardhat": "^2.24.0",
         "hardhat-gas-reporter": "^1.0.8",
+        "hardhat-typechain": "^0.3.5",
         "prettier": "^3.5.3",
         "solidity-coverage": "^0.8.0",
         "typechain": "^8.3.0"
@@ -28,6 +29,7 @@
         "h-compile": "hardhat compile",
         "h-test": "hardhat test",
         "h-test-s": "hardhat test --network sepolia",
+        "h-coverage": "hardhat coverage",
         "h-node": "hardhat node",
         "h-i-deploy": "hardhat ignition deploy",
         "h-s-deploy": "hardhat run scripts/deploy.js",
