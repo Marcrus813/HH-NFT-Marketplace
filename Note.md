@@ -55,7 +55,7 @@
                   then record the amount for withdraw
                 - Buyer first `ERC20.approve` then marketplace does `transferFrom` to pay with tokens, `payable` only
                   works with ETH
-                    - **To do this, need to insert a function on front end to approve the market place**, then proceed
+                    - **To do this, need to insert a function on front end to approve the marketplace**, then proceed
                       to marketplace contract and `transferFrom`, so in the contract consider the marketplace already
                       approved
     - Difficulties
@@ -190,7 +190,7 @@
 ## Testing
 
 - Fork
-    - When using fork, to give the local accounts, need to use hardhat ethers to personate the accounts and transfer
+    - When using fork, to give the local accounts, need to use hardhat ethers to impersonate the accounts and transfer
       funds to the local test accounts(or just use the accounts, but we will need to instantiate the account first)
     - When sending funds or tokens, there may be scenarios where the original account does not have enough ETH to pay
       gas:
