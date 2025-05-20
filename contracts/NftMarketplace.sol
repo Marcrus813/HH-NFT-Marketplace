@@ -153,6 +153,7 @@ contract NftMarketplace is ReentrancyGuard {
             if (priceFeedAddress == address(0)) {
                 revert NftMarketplace__PaymentNotSupported(paymentToken);
             }
+            _;
         }
     }
 
@@ -221,7 +222,6 @@ contract NftMarketplace is ReentrancyGuard {
                 tokenId
             );
         }
-
         s_listingMap[nftAddress][tokenId] = Listing(
             preferredPayment,
             price,
