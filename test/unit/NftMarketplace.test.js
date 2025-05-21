@@ -7531,97 +7531,102 @@ describe("NftMarketplace", () => {
                         doodleNonStrictUni,
                         doodleNonStrictWbtc;
 
+                    let highPrice, lowPrice;
+
                     beforeEach(async () => {
+                        highPrice = 100000;
+                        lowPrice = 5;
+
                         doodleStrictEth = {
                             tokenAddress: doodleAddress,
                             tokenId: doodlesTokens[1].id,
                             preferredPayment: zeroAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: true
                         };
                         doodleStrictWeth = {
                             tokenAddress: doodleAddress,
                             tokenId: doodlesTokens[2].id,
                             preferredPayment: wEthAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: true
                         };
                         doodleStrictDai = {
                             tokenAddress: doodleAddress,
                             tokenId: doodlesTokens[3].id,
                             preferredPayment: daiAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: true
                         };
                         doodleStrictLink = {
                             tokenAddress: doodleAddress,
                             tokenId: doodlesTokens[4].id,
                             preferredPayment: linkAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: true
                         };
                         doodleStrictUni = {
                             tokenAddress: doodleAddress,
                             tokenId: doodlesTokens[5].id,
                             preferredPayment: uniAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: true
                         };
                         doodleStrictWbtc = {
                             tokenAddress: doodleAddress,
                             tokenId: doodlesTokens[6].id,
                             preferredPayment: wBtcAddress,
-                            price: BigInt(100000e8),
+                            price: BigInt(highPrice * 1e8),
                             isStrictPayment: true
                         };
 
                         doodleNonStrictEth = {
                             tokenAddress: doodleAddress,
-                            tokenId: boredApeYachtClubTokens[7].id,
+                            tokenId: doodlesTokens[7].id,
                             preferredPayment: zeroAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: false
                         };
                         doodleNonStrictWeth = {
                             tokenAddress: doodleAddress,
-                            tokenId: boredApeYachtClubTokens[8].id,
+                            tokenId: doodlesTokens[8].id,
                             preferredPayment: wEthAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: false
                         };
                         doodleNonStrictUsdc = {
                             tokenAddress: doodleAddress,
-                            tokenId: boredApeYachtClubTokens[9].id,
+                            tokenId: doodlesTokens[9].id,
                             preferredPayment: usdcAddress,
-                            price: BigInt(100000e6),
+                            price: BigInt(highPrice * 1e6),
                             isStrictPayment: false
                         };
                         doodleNonStrictDai = {
                             tokenAddress: doodleAddress,
-                            tokenId: boredApeYachtClubTokens[10].id,
+                            tokenId: doodlesTokens[10].id,
                             preferredPayment: daiAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: false
                         };
                         doodleNonStrictLink = {
                             tokenAddress: doodleAddress,
-                            tokenId: boredApeYachtClubTokens[11].id,
+                            tokenId: doodlesTokens[11].id,
                             preferredPayment: linkAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: false
                         };
                         doodleNonStrictUni = {
                             tokenAddress: doodleAddress,
-                            tokenId: boredApeYachtClubTokens[12].id,
+                            tokenId: doodlesTokens[12].id,
                             preferredPayment: uniAddress,
-                            price: BigInt(100000e18),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: false
                         };
                         doodleNonStrictWbtc = {
                             tokenAddress: doodleAddress,
-                            tokenId: boredApeYachtClubTokens[13].id,
+                            tokenId: doodlesTokens[13].id,
                             preferredPayment: wBtcAddress,
-                            price: BigInt(100000e8),
+                            price: BigInt(highPrice * 1e18),
                             isStrictPayment: false
                         };
 
@@ -7797,8 +7802,1384 @@ describe("NftMarketplace", () => {
                         );
                     });
 
-                    describe("Strict payment", () => {});
-                    describe("Non-strict payment", () => {});
+                    describe("Strict payment", () => {
+                        describe("ETH", () => {
+                            it("Should revert when not enough sent", async () => {
+                                const buyer = deployer;
+                                const targetToken = doodleStrictEth;
+                                const buyerPayment = zeroAddress;
+
+                                const value = BigInt(1e18);
+                                await expect(
+                                    NftMarketplace.connect(buyer).buyToken(
+                                        targetToken.tokenAddress,
+                                        targetToken.tokenId,
+                                        buyerPayment,
+                                        { value: value }
+                                    )
+                                )
+                                    .to.be.revertedWithCustomError(
+                                        NftMarketplace,
+                                        "NftMarketplace__InvalidPayment"
+                                    )
+                                    .withArgs(
+                                        buyerPayment,
+                                        buyer.address,
+                                        targetToken.price
+                                    );
+                            });
+                        });
+                        describe("wETH", () => {
+                            it("Should revert when buyer does have enough", async () => {
+                                const buyer = wEthValidAccount;
+                                const targetToken = doodleStrictWeth;
+                                const buyerPayment = wEthAddress;
+
+                                await expect(
+                                    NftMarketplace.connect(buyer).buyToken(
+                                        targetToken.tokenAddress,
+                                        targetToken.tokenId,
+                                        buyerPayment
+                                    )
+                                )
+                                    .to.be.revertedWithCustomError(
+                                        NftMarketplace,
+                                        "NftMarketplace__InvalidPayment"
+                                    )
+                                    .withArgs(
+                                        buyerPayment,
+                                        buyer.address,
+                                        targetToken.price
+                                    );
+                            });
+                        });
+                        describe("USDC", () => {
+                            it("Should revert when buyer does have enough", async () => {
+                                const buyer = wBtcValidAccount;
+                                const targetToken = doodleStrictUsdc;
+                                const buyerPayment = usdcAddress;
+
+                                await expect(
+                                    NftMarketplace.connect(buyer).buyToken(
+                                        targetToken.tokenAddress,
+                                        targetToken.tokenId,
+                                        buyerPayment
+                                    )
+                                )
+                                    .to.be.revertedWithCustomError(
+                                        NftMarketplace,
+                                        "NftMarketplace__InvalidPayment"
+                                    )
+                                    .withArgs(
+                                        buyerPayment,
+                                        buyer.address,
+                                        targetToken.price
+                                    );
+                            });
+                        });
+                        describe("DAI", () => {
+                            it("Should revert when buyer does have enough", async () => {
+                                const buyer = daiValidAccount;
+                                const targetToken = doodleStrictDai;
+                                const buyerPayment = daiAddress;
+
+                                await expect(
+                                    NftMarketplace.connect(buyer).buyToken(
+                                        targetToken.tokenAddress,
+                                        targetToken.tokenId,
+                                        buyerPayment
+                                    )
+                                )
+                                    .to.be.revertedWithCustomError(
+                                        NftMarketplace,
+                                        "NftMarketplace__InvalidPayment"
+                                    )
+                                    .withArgs(
+                                        buyerPayment,
+                                        buyer.address,
+                                        targetToken.price
+                                    );
+                            });
+                        });
+                        describe("LINK", () => {
+                            it("Should revert when buyer does have enough", async () => {
+                                const buyer = linkValidAccount;
+                                const targetToken = doodleStrictLink;
+                                const buyerPayment = linkAddress;
+
+                                await expect(
+                                    NftMarketplace.connect(buyer).buyToken(
+                                        targetToken.tokenAddress,
+                                        targetToken.tokenId,
+                                        buyerPayment
+                                    )
+                                )
+                                    .to.be.revertedWithCustomError(
+                                        NftMarketplace,
+                                        "NftMarketplace__InvalidPayment"
+                                    )
+                                    .withArgs(
+                                        buyerPayment,
+                                        buyer.address,
+                                        targetToken.price
+                                    );
+                            });
+                        });
+                        describe("UNI", () => {
+                            it("Should revert when buyer does have enough", async () => {
+                                const buyer = uniValidAccount;
+                                const targetToken = doodleStrictUni;
+                                const buyerPayment = uniAddress;
+
+                                await expect(
+                                    NftMarketplace.connect(buyer).buyToken(
+                                        targetToken.tokenAddress,
+                                        targetToken.tokenId,
+                                        buyerPayment
+                                    )
+                                )
+                                    .to.be.revertedWithCustomError(
+                                        NftMarketplace,
+                                        "NftMarketplace__InvalidPayment"
+                                    )
+                                    .withArgs(
+                                        buyerPayment,
+                                        buyer.address,
+                                        targetToken.price
+                                    );
+                            });
+                        });
+                        describe("wBTC", () => {
+                            it("Should revert when buyer does have enough", async () => {
+                                const buyer = wBtcValidAccount;
+                                const targetToken = doodleStrictWbtc;
+                                const buyerPayment = wBtcAddress;
+
+                                await expect(
+                                    NftMarketplace.connect(buyer).buyToken(
+                                        targetToken.tokenAddress,
+                                        targetToken.tokenId,
+                                        buyerPayment
+                                    )
+                                )
+                                    .to.be.revertedWithCustomError(
+                                        NftMarketplace,
+                                        "NftMarketplace__InvalidPayment"
+                                    )
+                                    .withArgs(
+                                        buyerPayment,
+                                        buyer.address,
+                                        targetToken.price
+                                    );
+                            });
+                        });
+                    });
+                    describe("Non-strict payment", () => {
+                        describe("Preferring ETH", () => {
+                            describe("Supplying ETH", () => {
+                                it("Should revert if not enough sent", async () => {
+                                    const buyer = deployer;
+                                    const targetToken = doodleNonStrictEth;
+                                    const buyerPayment = zeroAddress;
+
+                                    const value = BigInt(1e18);
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment,
+                                            { value: value }
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wETH", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wEthValidAccount;
+                                    const targetToken = doodleNonStrictEth;
+                                    const buyerPayment = wEthAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying USDC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictEth;
+                                    const buyerPayment = usdcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying DAI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = daiValidAccount;
+                                    const targetToken = doodleNonStrictEth;
+                                    const buyerPayment = daiAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying LINK", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = linkValidAccount;
+                                    const targetToken = doodleNonStrictEth;
+                                    const buyerPayment = linkAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying UNI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = uniValidAccount;
+                                    const targetToken = doodleNonStrictEth;
+                                    const buyerPayment = uniAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wBTC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictEth;
+                                    const buyerPayment = wBtcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                        });
+                        describe("Preferring wETH", () => {
+                            describe("Supplying ETH", () => {
+                                it("Should revert if not enough sent", async () => {
+                                    const buyer = deployer;
+                                    const targetToken = doodleNonStrictWeth;
+                                    const buyerPayment = zeroAddress;
+
+                                    const value = BigInt(1e18);
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment,
+                                            { value: value }
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wETH", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wEthValidAccount;
+                                    const targetToken = doodleNonStrictWeth;
+                                    const buyerPayment = wEthAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying USDC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictWeth;
+                                    const buyerPayment = usdcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying DAI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = daiValidAccount;
+                                    const targetToken = doodleNonStrictWeth;
+                                    const buyerPayment = daiAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying LINK", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = linkValidAccount;
+                                    const targetToken = doodleNonStrictWeth;
+                                    const buyerPayment = linkAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying UNI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = uniValidAccount;
+                                    const targetToken = doodleNonStrictWeth;
+                                    const buyerPayment = uniAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wBTC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictWeth;
+                                    const buyerPayment = wBtcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                        });
+                        describe("Preferring USDC", () => {
+                            describe("Supplying ETH", () => {
+                                it("Should revert if not enough sent", async () => {
+                                    const buyer = deployer;
+                                    const targetToken = doodleNonStrictUsdc;
+                                    const buyerPayment = zeroAddress;
+
+                                    const value = BigInt(1e18);
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment,
+                                            { value: value }
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wETH", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wEthValidAccount;
+                                    const targetToken = doodleNonStrictUsdc;
+                                    const buyerPayment = wEthAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying USDC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictUsdc;
+                                    const buyerPayment = usdcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying DAI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = daiValidAccount;
+                                    const targetToken = doodleNonStrictUsdc;
+                                    const buyerPayment = daiAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying LINK", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = linkValidAccount;
+                                    const targetToken = doodleNonStrictUsdc;
+                                    const buyerPayment = linkAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying UNI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = uniValidAccount;
+                                    const targetToken = doodleNonStrictUsdc;
+                                    const buyerPayment = uniAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wBTC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictUsdc;
+                                    const buyerPayment = wBtcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                        });
+                        describe("Preferring DAI", () => {
+                            describe("Supplying ETH", () => {
+                                it("Should revert if not enough sent", async () => {
+                                    const buyer = deployer;
+                                    const targetToken = doodleNonStrictDai;
+                                    const buyerPayment = zeroAddress;
+
+                                    const value = BigInt(1e18);
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment,
+                                            { value: value }
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wETH", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wEthValidAccount;
+                                    const targetToken = doodleNonStrictDai;
+                                    const buyerPayment = wEthAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying USDC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictDai;
+                                    const buyerPayment = usdcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying DAI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = daiValidAccount;
+                                    const targetToken = doodleNonStrictDai;
+                                    const buyerPayment = daiAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying LINK", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = linkValidAccount;
+                                    const targetToken = doodleNonStrictDai;
+                                    const buyerPayment = linkAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying UNI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = uniValidAccount;
+                                    const targetToken = doodleNonStrictDai;
+                                    const buyerPayment = uniAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wBTC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictDai;
+                                    const buyerPayment = wBtcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                        });
+                        describe("Preferring LINK", () => {
+                            describe("Supplying ETH", () => {
+                                it("Should revert if not enough sent", async () => {
+                                    const buyer = deployer;
+                                    const targetToken = doodleNonStrictLink;
+                                    const buyerPayment = zeroAddress;
+
+                                    const value = BigInt(1e18);
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment,
+                                            { value: value }
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wETH", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wEthValidAccount;
+                                    const targetToken = doodleNonStrictLink;
+                                    const buyerPayment = wEthAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying USDC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictLink;
+                                    const buyerPayment = usdcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying DAI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = daiValidAccount;
+                                    const targetToken = doodleNonStrictLink;
+                                    const buyerPayment = daiAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying LINK", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = linkValidAccount;
+                                    const targetToken = doodleNonStrictLink;
+                                    const buyerPayment = linkAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying UNI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = uniValidAccount;
+                                    const targetToken = doodleNonStrictLink;
+                                    const buyerPayment = uniAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wBTC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictLink;
+                                    const buyerPayment = wBtcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                        });
+                        describe("Preferring UNI", () => {
+                            describe("Supplying ETH", () => {
+                                it("Should revert if not enough sent", async () => {
+                                    const buyer = deployer;
+                                    const targetToken = doodleNonStrictUni;
+                                    const buyerPayment = zeroAddress;
+
+                                    const value = BigInt(1e18);
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment,
+                                            { value: value }
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wETH", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wEthValidAccount;
+                                    const targetToken = doodleNonStrictUni;
+                                    const buyerPayment = wEthAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying USDC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictUni;
+                                    const buyerPayment = usdcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying DAI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = daiValidAccount;
+                                    const targetToken = doodleNonStrictUni;
+                                    const buyerPayment = daiAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying LINK", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = linkValidAccount;
+                                    const targetToken = doodleNonStrictUni;
+                                    const buyerPayment = linkAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying UNI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = uniValidAccount;
+                                    const targetToken = doodleNonStrictUni;
+                                    const buyerPayment = uniAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wBTC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictUni;
+                                    const buyerPayment = wBtcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                        });
+                        describe("Preferring wBTC", () => {
+                            describe("Supplying ETH", () => {
+                                it("Should revert if not enough sent", async () => {
+                                    const buyer = deployer;
+                                    const targetToken = doodleNonStrictWbtc;
+                                    const buyerPayment = zeroAddress;
+
+                                    const value = BigInt(1e18);
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment,
+                                            { value: value }
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wETH", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wEthValidAccount;
+                                    const targetToken = doodleNonStrictWbtc;
+                                    const buyerPayment = wEthAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying USDC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictWbtc;
+                                    const buyerPayment = usdcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying DAI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = daiValidAccount;
+                                    const targetToken = doodleNonStrictWbtc;
+                                    const buyerPayment = daiAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying LINK", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = linkValidAccount;
+                                    const targetToken = doodleNonStrictWbtc;
+                                    const buyerPayment = linkAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying UNI", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = uniValidAccount;
+                                    const targetToken = doodleNonStrictWbtc;
+                                    const buyerPayment = uniAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                            describe("Supplying wBTC", () => {
+                                it("Should revert when buyer does not have enough", async () => {
+                                    const buyer = wBtcValidAccount;
+                                    const targetToken = doodleNonStrictWbtc;
+                                    const buyerPayment = wBtcAddress;
+
+                                    await expect(
+                                        NftMarketplace.connect(buyer).buyToken(
+                                            targetToken.tokenAddress,
+                                            targetToken.tokenId,
+                                            buyerPayment
+                                        )
+                                    )
+                                        .to.be.revertedWithCustomError(
+                                            NftMarketplace,
+                                            "NftMarketplace__InvalidPayment"
+                                        )
+                                        .withArgs(
+                                            buyerPayment,
+                                            buyer.address,
+                                            targetToken.price
+                                        );
+                                });
+                            });
+                        });
+                    });
                 });
             });
         });
