@@ -11,48 +11,48 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "hardhat/console.sol";
 
-error NftMarketplace__PriceIsZero();
-error NftMarketplace__NotApprovedForMarketplace(
-    address nftAddress,
-    uint256 tokenId
-);
-error NftMarketplace__AlreadyListed(address nftAddress, uint256 tokenId);
-error NftMarketplace__NotOperatedByOwner(
-    address nftAddress,
-    uint256 tokenId,
-    address sender
-);
-error NftMarketplace__TokenNotListed(address nftAddress, uint256 tokenId);
+    error NftMarketplace__PriceIsZero();
+    error NftMarketplace__NotApprovedForMarketplace(
+        address nftAddress,
+        uint256 tokenId
+    );
+    error NftMarketplace__AlreadyListed(address nftAddress, uint256 tokenId);
+    error NftMarketplace__NotOperatedByOwner(
+        address nftAddress,
+        uint256 tokenId,
+        address sender
+    );
+    error NftMarketplace__TokenNotListed(address nftAddress, uint256 tokenId);
 
-error NftMarketplace__UpdateNotNeeded(
-    address nftAddress,
-    uint256 tokenId,
-    address oldPreferredPayment,
-    uint256 oldPrice,
-    bool oldStrictPayment
-);
+    error NftMarketplace__UpdateNotNeeded(
+        address nftAddress,
+        uint256 tokenId,
+        address oldPreferredPayment,
+        uint256 oldPrice,
+        bool oldStrictPayment
+    );
 
-error NftMarketplace__buyingYourOwnToken(
-    address nftAddress,
-    uint256 tokenId,
-    address seller
-);
+    error NftMarketplace__BuyingYourOwnToken(
+        address nftAddress,
+        uint256 tokenId,
+        address seller
+    );
 
-error NftMarketplace__InvalidPayment(
-    address paymentToken,
-    address buyer,
-    uint256 price
-);
-error NftMarketplace__PaymentNotAccepted(
-    address nftAddress,
-    uint256 tokenId,
-    address paymentToken
-);
-error NftMarketplace__PaymentNotSupported(address paymentToken);
+    error NftMarketplace__InvalidPayment(
+        address paymentToken,
+        address buyer,
+        uint256 price
+    );
+    error NftMarketplace__PaymentNotAccepted(
+        address nftAddress,
+        uint256 tokenId,
+        address paymentToken
+    );
+    error NftMarketplace__PaymentNotSupported(address paymentToken);
 
-error NftMarketplace__NothingToWithdraw(address supplier);
+    error NftMarketplace__NothingToWithdraw(address supplier);
 
-error NftMarketplace__TransferFailed(address supplier, address token);
+    error NftMarketplace__TransferFailed(address supplier, address token);
 
 contract NftMarketplace is ReentrancyGuard {
     using SignedMath for uint256;
@@ -64,7 +64,7 @@ contract NftMarketplace is ReentrancyGuard {
     - `updateListing`: Update price
     - `WithdrawProceeds`: When sold, market holds funds, then withdraw*/
     address private constant WETH_ADDRESS =
-        0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address[] private s_supportedPayments;
     mapping(address => address) private s_priceFeeds;
 
@@ -91,7 +91,7 @@ contract NftMarketplace is ReentrancyGuard {
      *     - So we add +1 to the index, so that 0 means not listed and 1 means first index
      */
     mapping(address => mapping(uint256 => uint256))
-        private s_listingPaddedIndex;
+    private s_listingPaddedIndex;
 
     // Seller address => Token address => amount
     mapping(address => mapping(address => uint256)) private s_proceeds;
@@ -202,11 +202,11 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 price,
         bool strictPayment
     )
-        external
-        paymentSupported(preferredPayment)
-        priceNotZero(price)
-        notYetListed(nftAddress, tokenId)
-        onlyTokenOwner(nftAddress, tokenId, msg.sender)
+    external
+    paymentSupported(preferredPayment)
+    priceNotZero(price)
+    notYetListed(nftAddress, tokenId)
+    onlyTokenOwner(nftAddress, tokenId, msg.sender)
     {
         // How to list?
         // 1. Transfer to the marketplace as new owner: gas expensive
@@ -256,7 +256,7 @@ contract NftMarketplace is ReentrancyGuard {
             ListingKey memory lastListing = s_activeListings[lastIndex];
             s_activeListings[index] = lastListing;
             s_listingPaddedIndex[lastListing.nftAddress][
-                lastListing.tokenId
+            lastListing.tokenId
             ] = paddedIndex;
         }
 
@@ -278,7 +278,7 @@ contract NftMarketplace is ReentrancyGuard {
             AggregatorV3Interface priceFeed = AggregatorV3Interface(
                 s_priceFeeds[address(paymentToken)]
             );
-            (, int256 answer, , , ) = priceFeed.latestRoundData();
+            (, int256 answer, , ,) = priceFeed.latestRoundData();
             uint8 tokenDecimals = paymentToken.decimals();
             uint8 feedDecimals = priceFeed.decimals();
 
@@ -309,7 +309,7 @@ contract NftMarketplace is ReentrancyGuard {
             AggregatorV3Interface priceFeed = AggregatorV3Interface(
                 s_priceFeeds[address(targetToken)]
             );
-            (, int256 answer, , , ) = priceFeed.latestRoundData();
+            (, int256 answer, , ,) = priceFeed.latestRoundData();
 
             uint8 tokenDecimals = targetToken.decimals();
             uint8 feedDecimals = priceFeed.decimals();
@@ -514,18 +514,18 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 tokenId,
         address paymentToken
     )
-        external
-        payable
-        nonReentrant
-        tokenIsListed(nftAddress, tokenId)
-        paymentSupported(paymentToken)
-        strictPaymentChecked(nftAddress, tokenId, paymentToken)
+    external
+    payable
+    nonReentrant
+    tokenIsListed(nftAddress, tokenId)
+    paymentSupported(paymentToken)
+    strictPaymentChecked(nftAddress, tokenId, paymentToken)
     {
         Listing memory listing = s_listingMap[nftAddress][tokenId];
 
         address seller = listing.seller;
         if (seller == msg.sender) {
-            revert NftMarketplace__buyingYourOwnToken(
+            revert NftMarketplace__BuyingYourOwnToken(
                 nftAddress,
                 tokenId,
                 seller
@@ -622,9 +622,9 @@ contract NftMarketplace is ReentrancyGuard {
         address nftAddress,
         uint256 tokenId
     )
-        external
-        onlyTokenOwner(nftAddress, tokenId, msg.sender)
-        tokenIsListed(nftAddress, tokenId)
+    external
+    onlyTokenOwner(nftAddress, tokenId, msg.sender)
+    tokenIsListed(nftAddress, tokenId)
     {
         removeListing(nftAddress, tokenId);
         emit ListingCancelled(msg.sender, nftAddress, tokenId);
@@ -637,11 +637,11 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 price,
         bool strictPayment
     )
-        external
-        onlyTokenOwner(nftAddress, tokenId, msg.sender)
-        tokenIsListed(nftAddress, tokenId)
-        paymentSupported(preferredPayment)
-        priceNotZero(price)
+    external
+    onlyTokenOwner(nftAddress, tokenId, msg.sender)
+    tokenIsListed(nftAddress, tokenId)
+    paymentSupported(preferredPayment)
+    priceNotZero(price)
     {
         Listing memory listing = s_listingMap[nftAddress][tokenId];
         bool updateNeeded;
@@ -700,7 +700,7 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 ethProceeds = s_proceeds[supplier][address(0)];
         if (ethProceeds > 0) {
             s_proceeds[supplier][address(0)] = 0;
-            (bool success, ) = payable(supplier).call{value: ethProceeds}("");
+            (bool success,) = payable(supplier).call{value: ethProceeds}("");
             require(
                 success,
                 NftMarketplace__TransferFailed(supplier, address(0))
@@ -723,7 +723,7 @@ contract NftMarketplace is ReentrancyGuard {
         } else {
             if (token == address(0)) {
                 s_proceeds[supplier][token] = 0;
-                (bool success, ) = payable(supplier).call{value: proceeds}("");
+                (bool success,) = payable(supplier).call{value: proceeds}("");
                 require(
                     success,
                     NftMarketplace__TransferFailed(supplier, token)
@@ -738,9 +738,9 @@ contract NftMarketplace is ReentrancyGuard {
     }
 
     function getSupportedPayments()
-        public
-        view
-        returns (address[] memory result)
+    public
+    view
+    returns (address[] memory result)
     {
         result = s_supportedPayments;
     }
@@ -793,8 +793,8 @@ contract NftMarketplace is ReentrancyGuard {
 
         uint256 destinationIndex = startIndex + length - 1;
         if (destinationIndex > listingsCount - 1) {
-            uint256 diff = destinationIndex - listingsCount + 1;
-            length -= diff;
+            destinationIndex = listingsCount - 1;
+            length = listingsCount - startIndex;
         }
 
         Listing[] memory buffer = new Listing[](length);
@@ -802,8 +802,8 @@ contract NftMarketplace is ReentrancyGuard {
         for (uint256 index = 0; index < length; index++) {
             ListingKey memory listingKey = activeListings[startIndex + index];
             Listing memory listing = s_listingMap[listingKey.nftAddress][
-                listingKey.tokenId
-            ];
+                            listingKey.tokenId
+                ];
             buffer[index] = listing;
         }
         result = buffer;
@@ -820,9 +820,9 @@ contract NftMarketplace is ReentrancyGuard {
     }
 
     function getActiveListingKeys()
-        public
-        view
-        returns (ListingKey[] memory result)
+    public
+    view
+    returns (ListingKey[] memory result)
     {
         result = s_activeListings;
     }

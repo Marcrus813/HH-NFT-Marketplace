@@ -38,7 +38,7 @@
     - Solution after re-thinking
         - Points
             1. Discarding the idea of strict token match, this will obviously work, not match token will have to swap
-               outside of the platform but this will defeat the purpose of flexibility
+               outside the platform but this will defeat the purpose of flexibility
             2. Auto swapping will be too complicated for this learning project, and it will be gas heavy and risky
             3. Only allows stable coins, also kinda defeating the purpose
             4. Seller configures to accepted non-preferred token purchase, if true then just transfer, if false then

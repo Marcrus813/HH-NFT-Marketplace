@@ -46,10 +46,63 @@ describe("NftMarketplace", () => {
     const sxtAddress = "0xE6Bfd33F52d82Ccb5b37E16D3dD81f9FFDAbB195";
     const tetherAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 
+    let usdcValidAccount;
+    let daiValidAccount;
+    let linkValidAccount;
+    let uniValidAccount;
+    let wBtcValidAccount;
+    let wEthValidAccount;
+
     async function deployFixture() {
         const { NftMarketplace: NftMarketplaceDeployment } =
             await ignition.deploy(NftMarketplaceModules);
         return { NftMarketplaceDeployment };
+    }
+
+    async function supplyTokensToAccounts() {
+        usdcValidAccount = clientAccounts[0];
+        daiValidAccount = clientAccounts[1];
+        linkValidAccount = clientAccounts[2];
+        uniValidAccount = clientAccounts[3];
+        wBtcValidAccount = clientAccounts[4];
+        wEthValidAccount = clientAccounts[5];
+
+        await supplyToken(
+            usdcAddress,
+            ERC20WhaleAddress.get(usdcAddress),
+            usdcValidAccount,
+            BigInt(10000e6)
+        );
+        await supplyToken(
+            daiAddress,
+            ERC20WhaleAddress.get(daiAddress),
+            daiValidAccount,
+            BigInt(10000e18)
+        );
+        await supplyToken(
+            linkAddress,
+            ERC20WhaleAddress.get(linkAddress),
+            linkValidAccount,
+            BigInt(10000e18)
+        );
+        await supplyToken(
+            uniAddress,
+            ERC20WhaleAddress.get(uniAddress),
+            uniValidAccount,
+            BigInt(10000e18)
+        );
+        await supplyToken(
+            wBtcAddress,
+            ERC20WhaleAddress.get(wBtcAddress),
+            wBtcValidAccount,
+            BigInt(100e8)
+        );
+        await supplyToken(
+            wEthAddress,
+            ERC20WhaleAddress.get(wEthAddress),
+            wEthValidAccount,
+            BigInt(500e18)
+        );
     }
 
     beforeEach(async () => {
@@ -71,6 +124,8 @@ describe("NftMarketplace", () => {
                 clientInitialEthBalance
             );
         }
+
+        await supplyTokensToAccounts();
     });
 
     describe("Tool functions", () => {
@@ -363,69 +418,12 @@ describe("NftMarketplace", () => {
         });
 
         describe("Verify payment(Tested with visibility as PUBLIC)", () => {
-            let usdcValidAccount;
-            let daiValidAccount;
-            let linkValidAccount;
-            let uniValidAccount;
-            let wBtcValidAccount;
-            let wEthValidAccount;
-
             let buyer;
             let value;
             let paymentToken;
             let preferredToken;
             let isStrictPayment;
             let targetPrice;
-
-            async function supplyTokensToAccounts() {
-                usdcValidAccount = clientAccounts[0];
-                daiValidAccount = clientAccounts[1];
-                linkValidAccount = clientAccounts[2];
-                uniValidAccount = clientAccounts[3];
-                wBtcValidAccount = clientAccounts[4];
-                wEthValidAccount = clientAccounts[5];
-
-                await supplyToken(
-                    usdcAddress,
-                    ERC20WhaleAddress.get(usdcAddress),
-                    usdcValidAccount,
-                    BigInt(10000e6)
-                );
-                await supplyToken(
-                    daiAddress,
-                    ERC20WhaleAddress.get(daiAddress),
-                    daiValidAccount,
-                    BigInt(10000e18)
-                );
-                await supplyToken(
-                    linkAddress,
-                    ERC20WhaleAddress.get(linkAddress),
-                    linkValidAccount,
-                    BigInt(10000e18)
-                );
-                await supplyToken(
-                    uniAddress,
-                    ERC20WhaleAddress.get(uniAddress),
-                    uniValidAccount,
-                    BigInt(10000e18)
-                );
-                await supplyToken(
-                    wBtcAddress,
-                    ERC20WhaleAddress.get(wBtcAddress),
-                    wBtcValidAccount,
-                    BigInt(100e8)
-                );
-                await supplyToken(
-                    wEthAddress,
-                    ERC20WhaleAddress.get(wEthAddress),
-                    wEthValidAccount,
-                    BigInt(500e18)
-                );
-            }
-
-            beforeEach(async () => {
-                await supplyTokensToAccounts();
-            });
             describe("Strict payment", () => {
                 beforeEach(() => {
                     isStrictPayment = true;
@@ -7359,38 +7357,450 @@ describe("NftMarketplace", () => {
                     );
                 });
 
-                it("Should return all exisiting tokens in specified range", async () => {
+                it("Should return all existing tokens in specified range", async () => {
                     const activeListings =
                         await NftMarketplaceByDoodleHolder.getActiveListingKeys();
                     const listingsCount = activeListings.length;
 
+                    const startIndex = 4;
+                    const queryLength = 15;
+
                     const returnedListings =
-                        await NftMarketplaceByDoodleHolder.getListings(2, 8);
+                        await NftMarketplaceByDoodleHolder.getListings(
+                            startIndex,
+                            queryLength
+                        );
 
                     expect(returnedListings.length).to.be.equals(
-                        8 - listingsCount - 2
+                        listingsCount - startIndex
                     );
 
                     expect(
-                        returnedListings[returnedListings.length]
+                        returnedListings[returnedListings.length - 1]
                             .preferredPayment
                     ).to.be.equals(preferredPayment4);
                     expect(
-                        returnedListings[returnedListings.length].price
+                        returnedListings[returnedListings.length - 1].price
                     ).to.be.equals(price4);
                     expect(
-                        returnedListings[returnedListings.length].strictPayment
+                        returnedListings[returnedListings.length - 1]
+                            .strictPayment
                     ).to.be.equals(isStrictPayment4);
                     expect(
-                        returnedListings[returnedListings.length].seller
+                        returnedListings[returnedListings.length - 1].seller
                     ).to.be.equals(boredApeYachtClubHolder.address);
                 });
             });
         });
 
         describe("Buying operations", () => {
-            let doodleStrictUsdc, doodleNonStrictUsdc;
+            let doodleStrictUsdc;
             let baycNonStrictWbtc;
+
+            beforeEach(async () => {
+                doodleStrictUsdc = {
+                    tokenAddress: doodleAddress,
+                    tokenId: doodlesTokens[0].id,
+                    preferredPayment: usdcAddress,
+                    price: BigInt(1e18),
+                    isStrictPayment: true
+                };
+                baycNonStrictWbtc = {
+                    tokenAddress: boredApeYachtClubAddress,
+                    tokenId: boredApeYachtClubTokens[0].id,
+                    preferredPayment: wBtcAddress,
+                    price: BigInt(1e8),
+                    isStrictPayment: false
+                };
+
+                await approveNft(
+                    doodleStrictUsdc.tokenAddress,
+                    doodleHolder.address,
+                    NftMarketplaceAddress,
+                    doodleStrictUsdc.tokenId
+                );
+                await approveNft(
+                    baycNonStrictWbtc.tokenAddress,
+                    boredApeYachtClubHolder.address,
+                    NftMarketplaceAddress,
+                    baycNonStrictWbtc.tokenId
+                );
+
+                await listNft(
+                    doodleStrictUsdc.tokenAddress,
+                    doodleStrictUsdc.tokenId,
+                    doodleStrictUsdc.preferredPayment,
+                    doodleStrictUsdc.price,
+                    doodleStrictUsdc.isStrictPayment
+                );
+                await listNft(
+                    baycNonStrictWbtc.tokenAddress,
+                    baycNonStrictWbtc.tokenId,
+                    baycNonStrictWbtc.preferredPayment,
+                    baycNonStrictWbtc.price,
+                    baycNonStrictWbtc.isStrictPayment
+                );
+            });
+
+            describe("Precautions", () => {
+                it("Should revert when buying a not-listed token", async () => {
+                    const notListedToken = {
+                        tokenAddress: lilPudgysAddress,
+                        tokenId: lilPudgysTokens[0].id
+                    };
+
+                    await expect(
+                        NftMarketplace.connect(usdcValidAccount).buyToken(
+                            notListedToken.tokenAddress,
+                            notListedToken.tokenId,
+                            usdcAddress
+                        )
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__TokenNotListed"
+                        )
+                        .withArgs(
+                            notListedToken.tokenAddress,
+                            notListedToken.tokenId
+                        );
+                });
+
+                it("Should revert when buying with not supported token", async () => {
+                    await expect(
+                        NftMarketplace.connect(usdcValidAccount).buyToken(
+                            doodleStrictUsdc.tokenAddress,
+                            doodleStrictUsdc.tokenId,
+                            tetherAddress
+                        )
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__PaymentNotSupported"
+                        )
+                        .withArgs(tetherAddress);
+                });
+                it("Should revert buying request with non-preferred token when strict payment is specified", async () => {
+                    await expect(
+                        NftMarketplace.connect(wBtcValidAccount).buyToken(
+                            doodleStrictUsdc.tokenAddress,
+                            doodleStrictUsdc.tokenId,
+                            wBtcAddress
+                        )
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__PaymentNotAccepted"
+                        )
+                        .withArgs(
+                            doodleStrictUsdc.tokenAddress,
+                            doodleStrictUsdc.tokenId,
+                            wBtcAddress
+                        );
+                });
+                it("Should revert when seller tries to buy their own listed token", async () => {
+                    await expect(
+                        NftMarketplaceByDoodleHolder.buyToken(
+                            doodleStrictUsdc.tokenAddress,
+                            doodleStrictUsdc.tokenId,
+                            usdcAddress
+                        )
+                    )
+                        .to.be.revertedWithCustomError(
+                            NftMarketplace,
+                            "NftMarketplace__BuyingYourOwnToken"
+                        )
+                        .withArgs(
+                            doodleStrictUsdc.tokenAddress,
+                            doodleStrictUsdc.tokenId,
+                            doodleHolder.address
+                        );
+                });
+                describe("Payment verification(should revert when buying with insufficient funds)", () => {
+                    let doodleStrictEth,
+                        doodleStrictWeth,
+                        doodleStrictDai,
+                        doodleStrictLink,
+                        doodleStrictUni,
+                        doodleStrictWbtc;
+                    let doodleNonStrictEth,
+                        doodleNonStrictWeth,
+                        doodleNonStrictUsdc,
+                        doodleNonStrictDai,
+                        doodleNonStrictLink,
+                        doodleNonStrictUni,
+                        doodleNonStrictWbtc;
+
+                    beforeEach(async () => {
+                        doodleStrictEth = {
+                            tokenAddress: doodleAddress,
+                            tokenId: doodlesTokens[1].id,
+                            preferredPayment: zeroAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: true
+                        };
+                        doodleStrictWeth = {
+                            tokenAddress: doodleAddress,
+                            tokenId: doodlesTokens[2].id,
+                            preferredPayment: wEthAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: true
+                        };
+                        doodleStrictDai = {
+                            tokenAddress: doodleAddress,
+                            tokenId: doodlesTokens[3].id,
+                            preferredPayment: daiAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: true
+                        };
+                        doodleStrictLink = {
+                            tokenAddress: doodleAddress,
+                            tokenId: doodlesTokens[4].id,
+                            preferredPayment: linkAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: true
+                        };
+                        doodleStrictUni = {
+                            tokenAddress: doodleAddress,
+                            tokenId: doodlesTokens[5].id,
+                            preferredPayment: uniAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: true
+                        };
+                        doodleStrictWbtc = {
+                            tokenAddress: doodleAddress,
+                            tokenId: doodlesTokens[6].id,
+                            preferredPayment: wBtcAddress,
+                            price: BigInt(100000e8),
+                            isStrictPayment: true
+                        };
+
+                        doodleNonStrictEth = {
+                            tokenAddress: doodleAddress,
+                            tokenId: boredApeYachtClubTokens[7].id,
+                            preferredPayment: zeroAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: false
+                        };
+                        doodleNonStrictWeth = {
+                            tokenAddress: doodleAddress,
+                            tokenId: boredApeYachtClubTokens[8].id,
+                            preferredPayment: wEthAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: false
+                        };
+                        doodleNonStrictUsdc = {
+                            tokenAddress: doodleAddress,
+                            tokenId: boredApeYachtClubTokens[9].id,
+                            preferredPayment: usdcAddress,
+                            price: BigInt(100000e6),
+                            isStrictPayment: false
+                        };
+                        doodleNonStrictDai = {
+                            tokenAddress: doodleAddress,
+                            tokenId: boredApeYachtClubTokens[10].id,
+                            preferredPayment: daiAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: false
+                        };
+                        doodleNonStrictLink = {
+                            tokenAddress: doodleAddress,
+                            tokenId: boredApeYachtClubTokens[11].id,
+                            preferredPayment: linkAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: false
+                        };
+                        doodleNonStrictUni = {
+                            tokenAddress: doodleAddress,
+                            tokenId: boredApeYachtClubTokens[12].id,
+                            preferredPayment: uniAddress,
+                            price: BigInt(100000e18),
+                            isStrictPayment: false
+                        };
+                        doodleNonStrictWbtc = {
+                            tokenAddress: doodleAddress,
+                            tokenId: boredApeYachtClubTokens[13].id,
+                            preferredPayment: wBtcAddress,
+                            price: BigInt(100000e8),
+                            isStrictPayment: false
+                        };
+
+                        await approveNft(
+                            doodleStrictEth.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleStrictEth.tokenId
+                        );
+                        await approveNft(
+                            doodleStrictWeth.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleStrictWeth.tokenId
+                        );
+                        await approveNft(
+                            doodleStrictDai.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleStrictDai.tokenId
+                        );
+                        await approveNft(
+                            doodleStrictLink.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleStrictLink.tokenId
+                        );
+                        await approveNft(
+                            doodleStrictUni.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleStrictUni.tokenId
+                        );
+                        await approveNft(
+                            doodleStrictWbtc.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleStrictWbtc.tokenId
+                        );
+                        await approveNft(
+                            doodleNonStrictEth.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleNonStrictEth.tokenId
+                        );
+                        await approveNft(
+                            doodleNonStrictWeth.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleNonStrictWeth.tokenId
+                        );
+                        await approveNft(
+                            doodleNonStrictUsdc.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleNonStrictUsdc.tokenId
+                        );
+                        await approveNft(
+                            doodleNonStrictDai.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleNonStrictDai.tokenId
+                        );
+                        await approveNft(
+                            doodleNonStrictLink.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleNonStrictLink.tokenId
+                        );
+                        await approveNft(
+                            doodleNonStrictUni.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleNonStrictUni.tokenId
+                        );
+                        await approveNft(
+                            doodleNonStrictWbtc.tokenAddress,
+                            doodleHolder.address,
+                            NftMarketplaceAddress,
+                            doodleNonStrictWbtc.tokenId
+                        );
+
+                        await listNft(
+                            doodleStrictEth.tokenAddress,
+                            doodleStrictEth.tokenId,
+                            doodleStrictEth.preferredPayment,
+                            doodleStrictEth.price,
+                            doodleStrictEth.isStrictPayment
+                        );
+                        await listNft(
+                            doodleStrictWeth.tokenAddress,
+                            doodleStrictWeth.tokenId,
+                            doodleStrictWeth.preferredPayment,
+                            doodleStrictWeth.price,
+                            doodleStrictWeth.isStrictPayment
+                        );
+                        await listNft(
+                            doodleStrictDai.tokenAddress,
+                            doodleStrictDai.tokenId,
+                            doodleStrictDai.preferredPayment,
+                            doodleStrictDai.price,
+                            doodleStrictDai.isStrictPayment
+                        );
+                        await listNft(
+                            doodleStrictLink.tokenAddress,
+                            doodleStrictLink.tokenId,
+                            doodleStrictLink.preferredPayment,
+                            doodleStrictLink.price,
+                            doodleStrictLink.isStrictPayment
+                        );
+                        await listNft(
+                            doodleStrictUni.tokenAddress,
+                            doodleStrictUni.tokenId,
+                            doodleStrictUni.preferredPayment,
+                            doodleStrictUni.price,
+                            doodleStrictUni.isStrictPayment
+                        );
+                        await listNft(
+                            doodleStrictWbtc.tokenAddress,
+                            doodleStrictWbtc.tokenId,
+                            doodleStrictWbtc.preferredPayment,
+                            doodleStrictWbtc.price,
+                            doodleStrictWbtc.isStrictPayment
+                        );
+                        await listNft(
+                            doodleNonStrictEth.tokenAddress,
+                            doodleNonStrictEth.tokenId,
+                            doodleNonStrictEth.preferredPayment,
+                            doodleNonStrictEth.price,
+                            doodleNonStrictEth.isStrictPayment
+                        );
+                        await listNft(
+                            doodleNonStrictWeth.tokenAddress,
+                            doodleNonStrictWeth.tokenId,
+                            doodleNonStrictWeth.preferredPayment,
+                            doodleNonStrictWeth.price,
+                            doodleNonStrictWeth.isStrictPayment
+                        );
+                        await listNft(
+                            doodleNonStrictUsdc.tokenAddress,
+                            doodleNonStrictUsdc.tokenId,
+                            doodleNonStrictUsdc.preferredPayment,
+                            doodleNonStrictUsdc.price,
+                            doodleNonStrictUsdc.isStrictPayment
+                        );
+                        await listNft(
+                            doodleNonStrictDai.tokenAddress,
+                            doodleNonStrictDai.tokenId,
+                            doodleNonStrictDai.preferredPayment,
+                            doodleNonStrictDai.price,
+                            doodleNonStrictDai.isStrictPayment
+                        );
+                        await listNft(
+                            doodleNonStrictLink.tokenAddress,
+                            doodleNonStrictLink.tokenId,
+                            doodleNonStrictLink.preferredPayment,
+                            doodleNonStrictLink.price,
+                            doodleNonStrictLink.isStrictPayment
+                        );
+                        await listNft(
+                            doodleNonStrictUni.tokenAddress,
+                            doodleNonStrictUni.tokenId,
+                            doodleNonStrictUni.preferredPayment,
+                            doodleNonStrictUni.price,
+                            doodleNonStrictUni.isStrictPayment
+                        );
+                        await listNft(
+                            doodleNonStrictWbtc.tokenAddress,
+                            doodleNonStrictWbtc.tokenId,
+                            doodleNonStrictWbtc.preferredPayment,
+                            doodleNonStrictWbtc.price,
+                            doodleNonStrictWbtc.isStrictPayment
+                        );
+                    });
+
+                    describe("Strict payment", () => {});
+                    describe("Non-strict payment", () => {});
+                });
+            });
         });
         describe("Withdrawing", () => {});
     });
