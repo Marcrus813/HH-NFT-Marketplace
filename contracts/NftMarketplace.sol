@@ -604,7 +604,7 @@ contract NftMarketplace is ReentrancyGuard {
         }
 
         removeListing(nftAddress, tokenId);
-        IERC721(nftAddress).transferFrom(
+        IERC721(nftAddress).safeTransferFrom(
             listing.seller,
             msg.sender,
             tokenId

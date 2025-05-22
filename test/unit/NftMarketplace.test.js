@@ -9697,12 +9697,12 @@ describe("NftMarketplace", () => {
                             const buyer = wEthValidAccount;
                             const targetToken = doodleNonStrictUsdc;
 
-                            const recordedProceedsBefore =
+                            const convertedProceedsBefore =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    wEthAddress
+                                    zeroAddress
                                 );
-                            const expectedAmount =
+                            const expectedEthAmount =
                                 await NftMarketplace.convertToEth(
                                     targetToken.preferredPayment,
                                     targetToken.price
@@ -9717,37 +9717,50 @@ describe("NftMarketplace", () => {
                             );
                             await buyTxn.wait();
 
-                            const recordedProceedsAfter =
+                            const convertedProceedsAfter =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    wEthAddress
+                                    zeroAddress
                                 );
-                            expect(recordedProceedsAfter).to.be.equals(
-                                recordedProceedsBefore + expectedAmount
+                            expect(convertedProceedsAfter).to.be.equals(
+                                convertedProceedsBefore + expectedEthAmount
                             );
                         });
                     });
                     describe("Supplying USDC", () => {
                         it("Should be able to update `s_proceeds`", async () => {
-                            const targetToken = doodleNonStrictEth;
+                            const targetToken = doodleNonStrictDai;
                             const price = targetToken.price;
+
+                            const priceEthEquivalent =
+                                await NftMarketplace.convertToEth(
+                                    targetToken.preferredPayment,
+                                    price
+                                );
+
+                            const expectedPaymentAmount =
+                                await NftMarketplace.convertFromEth(
+                                    usdcAddress,
+                                    priceEthEquivalent
+                                );
 
                             const tempBuyer =
                                 clientAccounts[clientAccounts.length - 1];
+
                             await supplyToken(
                                 usdcAddress,
                                 usdcValidAccount.address,
                                 tempBuyer.address,
-                                price
+                                expectedPaymentAmount
                             );
                             await approveAllowance(
                                 usdcAddress,
                                 tempBuyer.address,
                                 NftMarketplaceAddress,
-                                price
+                                expectedPaymentAmount
                             );
 
-                            const recordedProceedsBefore =
+                            const convertedProceedsBefore =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
                                     zeroAddress
@@ -9762,13 +9775,13 @@ describe("NftMarketplace", () => {
                             );
                             await buyTxn.wait();
 
-                            const recordedProceedsAfter =
+                            const convertedProceedsAfter =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    usdcAddress
+                                    zeroAddress
                                 );
-                            expect(recordedProceedsAfter).to.be.equals(
-                                recordedProceedsBefore + price
+                            expect(convertedProceedsAfter).to.be.equals(
+                                convertedProceedsBefore + priceEthEquivalent
                             );
                         });
                     });
@@ -9777,20 +9790,15 @@ describe("NftMarketplace", () => {
                             const targetToken = doodleNonStrictUsdc;
                             const buyer = daiValidAccount;
 
-                            const recordedProceedsBefore =
+                            const convertedProceedsBefore =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    daiAddress
+                                    zeroAddress
                                 );
                             const expectedEthEquivalent =
                                 await NftMarketplace.convertToEth(
                                     targetToken.preferredPayment,
                                     targetToken.price
-                                );
-                            const expectedAmount =
-                                await NftMarketplace.convertFromEth(
-                                    daiAddress,
-                                    expectedEthEquivalent
                                 );
 
                             const buyTxn = await NftMarketplace.connect(
@@ -9803,13 +9811,13 @@ describe("NftMarketplace", () => {
 
                             await buyTxn.wait();
 
-                            const recordedProceedsAfter =
+                            const convertedProceedsAfter =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    wEthAddress
+                                    zeroAddress
                                 );
-                            expect(recordedProceedsAfter).to.be.equals(
-                                recordedProceedsBefore + expectedAmount
+                            expect(convertedProceedsAfter).to.be.equals(
+                                convertedProceedsBefore + expectedEthEquivalent
                             );
                         });
                     });
@@ -9818,21 +9826,16 @@ describe("NftMarketplace", () => {
                             const buyer = linkValidAccount;
                             const targetToken = doodleNonStrictUsdc;
 
-                            const recordedProceedsBefore =
+                            const convertedProceedsBefore =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    linkAddress
+                                    zeroAddress
                                 );
 
                             const expectedEthEquivalent =
                                 await NftMarketplace.convertToEth(
                                     targetToken.preferredPayment,
                                     targetToken.price
-                                );
-                            const expectedAmount =
-                                await NftMarketplace.convertFromEth(
-                                    linkAddress,
-                                    expectedEthEquivalent
                                 );
 
                             const buyTxn = await NftMarketplace.connect(
@@ -9844,13 +9847,13 @@ describe("NftMarketplace", () => {
                             );
                             await buyTxn.wait();
 
-                            const recordedProceedsAfter =
+                            const convertedProceedsAfter =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    linkAddress
+                                    zeroAddress
                                 );
-                            expect(recordedProceedsAfter).to.be.equals(
-                                recordedProceedsBefore + expectedAmount
+                            expect(convertedProceedsAfter).to.be.equals(
+                                convertedProceedsBefore + expectedEthEquivalent
                             );
                         });
                     });
@@ -9859,21 +9862,16 @@ describe("NftMarketplace", () => {
                             const buyer = uniValidAccount;
                             const targetToken = doodleNonStrictUsdc;
 
-                            const recordedProceedsBefore =
+                            const convertedProceedsBefore =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    uniValidAccount
+                                    zeroAddress
                                 );
 
                             const expectedEthEquivalent =
                                 await NftMarketplace.convertToEth(
                                     targetToken.preferredPayment,
                                     targetToken.price
-                                );
-                            const expectedAmount =
-                                await NftMarketplace.convertFromEth(
-                                    linkAddress,
-                                    expectedEthEquivalent
                                 );
 
                             const buyTxn = await NftMarketplace.connect(
@@ -9885,13 +9883,13 @@ describe("NftMarketplace", () => {
                             );
                             await buyTxn.wait();
 
-                            const recordedProceedsAfter =
+                            const convertedProceedsAfter =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    uniAddress
+                                    zeroAddress
                                 );
-                            expect(recordedProceedsAfter).to.be.equals(
-                                recordedProceedsBefore + expectedAmount
+                            expect(convertedProceedsAfter).to.be.equals(
+                                convertedProceedsBefore + expectedEthEquivalent
                             );
                         });
                     });
@@ -9900,20 +9898,16 @@ describe("NftMarketplace", () => {
                             const buyer = wBtcValidAccount;
                             const targetToken = doodleNonStrictUsdc;
 
-                            const recordedProceedsBefore =
+                            const zeroAddressProceedsBefore =
                                 await NftMarketplace.getSupplierProceeds(
-                                    doodleHolder.address
+                                    doodleHolder.address,
+                                    zeroAddress
                                 );
 
                             const expectedEthEquivalent =
                                 await NftMarketplace.convertToEth(
                                     targetToken.preferredPayment,
                                     targetToken.price
-                                );
-                            const expectedAmount =
-                                await NftMarketplace.convertFromEth(
-                                    wBtcAddress,
-                                    expectedEthEquivalent
                                 );
 
                             const buyTxn = await NftMarketplace.connect(
@@ -9925,13 +9919,14 @@ describe("NftMarketplace", () => {
                             );
                             await buyTxn.wait();
 
-                            const recordedProceedsAfter =
+                            const convertedProceedsAfter =
                                 await NftMarketplace.getSupplierProceeds(
                                     doodleHolder.address,
-                                    wBtcAddress
+                                    zeroAddress
                                 );
-                            expect(recordedProceedsAfter).to.be.equals(
-                                recordedProceedsBefore + expectedAmount
+                            expect(convertedProceedsAfter).to.be.equals(
+                                zeroAddressProceedsBefore +
+                                    expectedEthEquivalent
                             );
                         });
                     });
