@@ -186,6 +186,21 @@
             - **What to take away?**
                 - The problem was not exposed when testing `listNft`, I thought I have tested `paymentSupported`
                   modifier, but I did not test all the branches in it and failed to see the problem
+- [ ] Transferring NFT
+    - When testing `buyToken`, got reverted without reason string, `console.log` panned through until
+      `IERC721(nftAddress).safeTransferFrom`
+    - Went through after changing to `transferFrom`
+        - Main difference
+            - `safe` checks if the token is really received
+            - Look at the code, `safe` calls `ERC721Utils.checkOnERC721Received`, in which there's a check:
+              `if (to.code.length > 0)` and then `onERC721Received` that may be implemented by the contract
+                - [ ] But I am sending to a Wallet, so `if (to.code.length > 0)` should prevent from checking
+                    - [x] Maybe the account is a contract under the hood?
+                        - Use `ethers.provider.getCode` to check -> code is not `0x` -> It is a fxxking contract ->
+        - Why transferFrom still exists?
+            - To not overcomplicate the standard, the intention of `safeTransferFrom` is to protect NFT from being sent
+              to a contract that does not know how to handle it hence "lost", but this is an _unintended action_ but not
+              an _invalid action_
 
 ## Testing
 

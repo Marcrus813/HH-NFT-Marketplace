@@ -134,7 +134,7 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 amount
     );
 
-    constructor(address[] memory supportedPayments) {
+    constructor(address[] memory supportedPayments) payable {
         s_supportedPayments = supportedPayments;
         s_supportedPayments.push(WETH_ADDRESS); // WETH
         for (uint i = 0; i < supportedPayments.length; i++) {
@@ -561,6 +561,7 @@ contract NftMarketplace is ReentrancyGuard {
         if (strictPayment || paymentMatch) {
             if (paymentToken == address(0)) {
                 // ETH
+
                 s_proceeds[listing.seller][address(0)] += msg.value;
                 paymentAmount = msg.value;
             } else {
@@ -603,7 +604,7 @@ contract NftMarketplace is ReentrancyGuard {
         }
 
         removeListing(nftAddress, tokenId);
-        IERC721(nftAddress).safeTransferFrom(
+        IERC721(nftAddress).transferFrom(
             listing.seller,
             msg.sender,
             tokenId
