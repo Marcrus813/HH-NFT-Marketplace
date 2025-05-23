@@ -186,7 +186,7 @@
             - **What to take away?**
                 - The problem was not exposed when testing `listNft`, I thought I have tested `paymentSupported`
                   modifier, but I did not test all the branches in it and failed to see the problem
-- [ ] Transferring NFT
+- [x] Transferring NFT
     - When testing `buyToken`, got reverted without reason string, `console.log` panned through until
       `IERC721(nftAddress).safeTransferFrom`
     - Went through after changing to `transferFrom`
@@ -201,6 +201,42 @@
             - To not overcomplicate the standard, the intention of `safeTransferFrom` is to protect NFT from being sent
               to a contract that does not know how to handle it hence "lost", but this is an _unintended action_ but not
               an _invalid action_
+- [ ] Supplier balance "drained" by calling `withdrawProceeds`
+
+    - It seems that when using hardhat account, the balance is not "real", and after sending the account `ETH` either
+      from forked "real" account or other hardhat account, the balance is refreshed
+
+        - Example:
+
+            ```javascript
+            const [funder] = await ethers.getSigners();
+            const funderBalance = await ethers.provider.getBalance(
+                funder.address
+            );
+            console.log(`Funder balance: ${funderBalance}`);
+            await funder.sendTransaction({
+                to: doodleHolder.address,
+                value: ethers.parseEther("10")
+            });
+
+            await funder.sendTransaction({
+                to: doodleHolder.address,
+                value: ethers.parseEther("10")
+            });
+
+            const ethBalanceBefore = await ethers.provider.getBalance(
+                doodleHolder.address
+            );
+
+            console.log(`Supplier balance before: ${ethBalanceBefore}`);
+            ```
+
+            Will give me:
+
+            ```shell
+            Funder balance: 9469495045438202269208
+            Supplier balance before: 0
+            ```
 
 ## Testing
 
@@ -221,3 +257,7 @@
                 - Key point, when returned `0x`, it means the address is not a contract **YET**, also, some libraries
                   can exploit this behavior
                 - Generally, avoid doing this on-chain, but off-chain it should be good
+
+## New best practices
+
+- Use `SafeTransferLib` to send ETH

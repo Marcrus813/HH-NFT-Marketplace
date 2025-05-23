@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/math/SignedMath.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 
 import "hardhat/console.sol";
 
@@ -604,11 +605,12 @@ contract NftMarketplace is ReentrancyGuard {
         }
 
         removeListing(nftAddress, tokenId);
-        IERC721(nftAddress).safeTransferFrom(
+        /* IERC721(nftAddress).safeTransferFrom(
             listing.seller,
             msg.sender,
             tokenId
-        );
+        ); */
+        IERC721(nftAddress).transferFrom(listing.seller, msg.sender, tokenId);
 
         emit TokenBought(
             msg.sender,
@@ -688,7 +690,7 @@ contract NftMarketplace is ReentrancyGuard {
         for (uint256 i = 0; i < s_supportedPayments.length; i++) {
             address token = s_supportedPayments[i];
             uint256 proceeds = s_proceeds[supplier][token];
-            if (proceeds <= 0) {
+            if (proceeds > 0) {
                 hasProceeds = true;
                 s_proceeds[supplier][token] = 0;
                 IERC20(token).transfer(supplier, proceeds);
@@ -701,11 +703,7 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 ethProceeds = s_proceeds[supplier][address(0)];
         if (ethProceeds > 0) {
             s_proceeds[supplier][address(0)] = 0;
-            (bool success,) = payable(supplier).call{value: ethProceeds}("");
-            require(
-                success,
-                NftMarketplace__TransferFailed(supplier, address(0))
-            );
+            SafeTransferLib.safeTransferETH(supplier, ethProceeds);
             emit ProceedsWithdrawn(supplier, address(0), ethProceeds);
         } else if (!hasProceeds) {
             revert NftMarketplace__NothingToWithdraw(supplier);
@@ -724,11 +722,7 @@ contract NftMarketplace is ReentrancyGuard {
         } else {
             if (token == address(0)) {
                 s_proceeds[supplier][token] = 0;
-                (bool success,) = payable(supplier).call{value: proceeds}("");
-                require(
-                    success,
-                    NftMarketplace__TransferFailed(supplier, token)
-                );
+                SafeTransferLib.safeTransferETH(supplier, proceeds);
                 emit ProceedsWithdrawn(supplier, address(0), proceeds);
             } else {
                 s_proceeds[supplier][token] = 0;

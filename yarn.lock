@@ -6987,6 +6987,7 @@ __metadata:
     hardhat-gas-reporter: "npm:^1.0.8"
     hardhat-typechain: "npm:^0.3.5"
     prettier: "npm:^3.5.3"
+    solady: "npm:^0.1.19"
     solidity-coverage: "npm:^0.8.0"
     typechain: "npm:^8.3.0"
   languageName: unknown
@@ -7332,6 +7333,13 @@ __metadata:
     ip-address: "npm:^9.0.5"
     smart-buffer: "npm:^4.2.0"
   checksum: 10c0/00c3271e233ccf1fb83a3dd2060b94cc37817e0f797a93c560b9a7a86c4a0ec2961fb31263bdd24a3c28945e24868b5f063cd98744171d9e942c513454b50ae5
+  languageName: node
+  linkType: hard
+
+"solady@npm:^0.1.19":
+  version: 0.1.19
+  resolution: "solady@npm:0.1.19"
+  checksum: 10c0/05c2bad081352c9c2d06c11b7d4d748058019ee9da2af147e15a3dd435d11283211a10f0fa471b2d82032f207c6367a69ec98b43947087f3fc604cc3e118c859
   languageName: node
   linkType: hard
 

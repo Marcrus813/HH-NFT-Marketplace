@@ -9,7 +9,7 @@ async function supplyGas(targetAddress) {
         const [funder] = await ethers.getSigners();
         await funder.sendTransaction({
             to: targetAddress,
-            value: ethers.parseEther("10"),
+            value: ethers.parseEther("10")
         });
     }
 }
@@ -18,7 +18,7 @@ const supplyToken = async (
     tokenAddress,
     ownerAddress,
     targetAddress,
-    amount,
+    amount
 ) => {
     // Supply ETH to owner for gas fee
     await supplyGas(ownerAddress);
@@ -27,7 +27,7 @@ const supplyToken = async (
     const token = await ethers.getContractAt(
         ERC20Abi,
         tokenAddress,
-        impersonatedSigner,
+        impersonatedSigner
     );
 
     const transferTxn = await token.transfer(targetAddress, amount);
@@ -38,7 +38,7 @@ const approveAllowance = async (
     tokenAddress,
     ownerAddress,
     targetAddress,
-    amount,
+    amount
 ) => {
     await supplyGas(ownerAddress);
 
@@ -46,7 +46,7 @@ const approveAllowance = async (
     const token = await ethers.getContractAt(
         ERC20Abi,
         tokenAddress,
-        impersonatedSigner,
+        impersonatedSigner
     );
 
     const approveTxn = await token.approve(targetAddress, amount);
@@ -60,7 +60,7 @@ const getErc20Balance = async (tokenAddress, ownerAddress, targetAddress) => {
     const token = await ethers.getContractAt(
         ERC20Abi,
         tokenAddress,
-        impersonatedSigner,
+        impersonatedSigner
     );
 
     return await token.balanceOf(targetAddress);
@@ -73,10 +73,25 @@ const getErc20Allowance = async (tokenAddress, ownerAddress, targetAddress) => {
     const token = await ethers.getContractAt(
         ERC20Abi,
         tokenAddress,
-        impersonatedSigner,
+        impersonatedSigner
     );
 
     return await token.allowance(ownerAddress, targetAddress);
+};
+
+const getNftOwner = async (tokenAddress, tokenId, queryAddress) => {
+    await supplyGas(queryAddress);
+
+    const impersonatedSigner = await ethers.getImpersonatedSigner(queryAddress);
+
+    const token = await ethers.getContractAt(
+        ERC721Abi,
+        tokenAddress,
+        impersonatedSigner
+    );
+
+    const owner = await token.ownerOf(tokenId);
+    return owner;
 };
 
 const transferNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
@@ -87,13 +102,13 @@ const transferNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
     const token = await ethers.getContractAt(
         ERC721Abi,
         tokenAddress,
-        impersonatedSigner,
+        impersonatedSigner
     );
 
     const transferTxn = await token.transferFrom(
         impersonatedSigner,
         toAddress,
-        tokenId,
+        tokenId
     );
     await transferTxn.wait();
 };
@@ -105,17 +120,19 @@ const approveNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
     const token = await ethers.getContractAt(
         ERC721Abi,
         tokenAddress,
-        impersonatedSigner,
+        impersonatedSigner
     );
     const approveTxn = await token.approve(toAddress, tokenId);
     await approveTxn.wait();
 };
 
 module.exports = {
+    supplyGas,
     supplyToken,
     approveAllowance,
     getErc20Balance,
     getErc20Allowance,
+    getNftOwner,
     transferNft,
     approveNft
 };
