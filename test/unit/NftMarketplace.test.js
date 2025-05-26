@@ -1,5 +1,4 @@
 const { ethers, ignition } = require("hardhat");
-const { Typed } = require("@nomicfoundation/hardhat-ethers");
 const { expect } = require("chai");
 
 const {

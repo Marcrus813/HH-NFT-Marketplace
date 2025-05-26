@@ -113,8 +113,7 @@ const getNftOwner = async (tokenAddress, tokenId, queryAddress) => {
         impersonatedSigner
     );
 
-    const owner = await token.ownerOf(tokenId);
-    return owner;
+    return await token.ownerOf(tokenId);
 };
 
 const transferNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
