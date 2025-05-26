@@ -198,7 +198,7 @@
                     - [x] Maybe the account is a contract under the hood?
                         - Use `ethers.provider.getCode` to check -> code is not `0x` -> It is a fxxking contract ->
         - Why transferFrom still exists?
-            - To not overcomplicate the standard, the intention of `safeTransferFrom` is to protect NFT from being sent
+            - To not over-complicate the standard, the intention of `safeTransferFrom` is to protect NFT from being sent
               to a contract that does not know how to handle it hence "lost", but this is an _unintended action_ but not
               an _invalid action_
 - [x] Supplier balance "drained" by calling `withdrawProceeds`

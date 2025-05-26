@@ -11428,9 +11428,83 @@ describe("NftMarketplace", () => {
                         });
                     });
                     describe("Withdrawing", () => {
-                        it("Should clear storage", async () => {});
-                        it("Should be able to transfer desired asset", async () => {});
-                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                        it("Should clear storage", async () => {
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+                            expect(proceedsAfter).to.be.equals(0);
+                        });
+                        it("Should be able to transfer desired asset", async () => {
+                            const contractBalanceBefore =
+                                await ethers.provider.getBalance(
+                                    NftMarketplaceAddress
+                                );
+
+                            const clientBalanceBefore =
+                                await ethers.provider.getBalance(
+                                    doodleHolder.address
+                                );
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            const withdrawTxn =
+                                await NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken);
+                            const txnReceipt = await withdrawTxn.wait();
+                            const gasFee = txnReceipt.fee;
+
+                            const contractBalanceAfter =
+                                await ethers.provider.getBalance(
+                                    NftMarketplaceAddress
+                                );
+
+                            const clientBalanceAfter =
+                                await ethers.provider.getBalance(
+                                    doodleHolder.address
+                                );
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            expect(contractBalanceAfter).to.be.equals(
+                                contractBalanceBefore - proceedsBefore
+                            );
+                            expect(proceedsAfter).to.be.equals(0);
+                            expect(clientBalanceAfter).to.be.equals(
+                                clientBalanceBefore + proceedsBefore - gasFee
+                            );
+                        });
+                        it("Should emit `ProceedsWithdrawn`", async () => {
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await expect(
+                                NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.emit(NftMarketplace, "ProceedsWithdrawn")
+                                .withArgs(
+                                    doodleHolder.address,
+                                    targetToken,
+                                    proceedsBefore
+                                );
+                        });
                     });
                 });
                 describe("wETH", () => {
@@ -11452,9 +11526,84 @@ describe("NftMarketplace", () => {
                         });
                     });
                     describe("Withdrawing", () => {
-                        it("Should clear storage", async () => {});
-                        it("Should be able to transfer desired asset", async () => {});
-                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                        it("Should clear storage", async () => {
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+                            expect(proceedsAfter).to.be.equals(0);
+                        });
+                        it("Should be able to transfer desired asset", async () => {
+                            const contractBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const contractBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            expect(contractBalanceAfter).to.be.equals(
+                                contractBalanceBefore - proceedsBefore
+                            );
+                            expect(proceedsAfter).to.be.equals(0);
+                            expect(clientBalanceAfter).to.be.equals(
+                                clientBalanceBefore + proceedsBefore
+                            );
+                        });
+                        it("Should emit `ProceedsWithdrawn`", async () => {
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await expect(
+                                NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.emit(NftMarketplace, "ProceedsWithdrawn")
+                                .withArgs(
+                                    doodleHolder.address,
+                                    targetToken,
+                                    proceedsBefore
+                                );
+                        });
                     });
                 });
                 describe("USDC", () => {
@@ -11476,9 +11625,84 @@ describe("NftMarketplace", () => {
                         });
                     });
                     describe("Withdrawing", () => {
-                        it("Should clear storage", async () => {});
-                        it("Should be able to transfer desired asset", async () => {});
-                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                        it("Should clear storage", async () => {
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+                            expect(proceedsAfter).to.be.equals(0);
+                        });
+                        it("Should be able to transfer desired asset", async () => {
+                            const contractBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const contractBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            expect(contractBalanceAfter).to.be.equals(
+                                contractBalanceBefore - proceedsBefore
+                            );
+                            expect(proceedsAfter).to.be.equals(0);
+                            expect(clientBalanceAfter).to.be.equals(
+                                clientBalanceBefore + proceedsBefore
+                            );
+                        });
+                        it("Should emit `ProceedsWithdrawn`", async () => {
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await expect(
+                                NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.emit(NftMarketplace, "ProceedsWithdrawn")
+                                .withArgs(
+                                    doodleHolder.address,
+                                    targetToken,
+                                    proceedsBefore
+                                );
+                        });
                     });
                 });
                 describe("DAI", () => {
@@ -11500,9 +11724,84 @@ describe("NftMarketplace", () => {
                         });
                     });
                     describe("Withdrawing", () => {
-                        it("Should clear storage", async () => {});
-                        it("Should be able to transfer desired asset", async () => {});
-                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                        it("Should clear storage", async () => {
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+                            expect(proceedsAfter).to.be.equals(0);
+                        });
+                        it("Should be able to transfer desired asset", async () => {
+                            const contractBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const contractBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            expect(contractBalanceAfter).to.be.equals(
+                                contractBalanceBefore - proceedsBefore
+                            );
+                            expect(proceedsAfter).to.be.equals(0);
+                            expect(clientBalanceAfter).to.be.equals(
+                                clientBalanceBefore + proceedsBefore
+                            );
+                        });
+                        it("Should emit `ProceedsWithdrawn`", async () => {
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await expect(
+                                NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.emit(NftMarketplace, "ProceedsWithdrawn")
+                                .withArgs(
+                                    doodleHolder.address,
+                                    targetToken,
+                                    proceedsBefore
+                                );
+                        });
                     });
                 });
                 describe("LINK", () => {
@@ -11524,9 +11823,84 @@ describe("NftMarketplace", () => {
                         });
                     });
                     describe("Withdrawing", () => {
-                        it("Should clear storage", async () => {});
-                        it("Should be able to transfer desired asset", async () => {});
-                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                        it("Should clear storage", async () => {
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+                            expect(proceedsAfter).to.be.equals(0);
+                        });
+                        it("Should be able to transfer desired asset", async () => {
+                            const contractBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const contractBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            expect(contractBalanceAfter).to.be.equals(
+                                contractBalanceBefore - proceedsBefore
+                            );
+                            expect(proceedsAfter).to.be.equals(0);
+                            expect(clientBalanceAfter).to.be.equals(
+                                clientBalanceBefore + proceedsBefore
+                            );
+                        });
+                        it("Should emit `ProceedsWithdrawn`", async () => {
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await expect(
+                                NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.emit(NftMarketplace, "ProceedsWithdrawn")
+                                .withArgs(
+                                    doodleHolder.address,
+                                    targetToken,
+                                    proceedsBefore
+                                );
+                        });
                     });
                 });
                 describe("UNI", () => {
@@ -11548,9 +11922,84 @@ describe("NftMarketplace", () => {
                         });
                     });
                     describe("Withdrawing", () => {
-                        it("Should clear storage", async () => {});
-                        it("Should be able to transfer desired asset", async () => {});
-                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                        it("Should clear storage", async () => {
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+                            expect(proceedsAfter).to.be.equals(0);
+                        });
+                        it("Should be able to transfer desired asset", async () => {
+                            const contractBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const contractBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            expect(contractBalanceAfter).to.be.equals(
+                                contractBalanceBefore - proceedsBefore
+                            );
+                            expect(proceedsAfter).to.be.equals(0);
+                            expect(clientBalanceAfter).to.be.equals(
+                                clientBalanceBefore + proceedsBefore
+                            );
+                        });
+                        it("Should emit `ProceedsWithdrawn`", async () => {
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await expect(
+                                NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.emit(NftMarketplace, "ProceedsWithdrawn")
+                                .withArgs(
+                                    doodleHolder.address,
+                                    targetToken,
+                                    proceedsBefore
+                                );
+                        });
                     });
                 });
                 describe("wBTC", () => {
@@ -11572,9 +12021,84 @@ describe("NftMarketplace", () => {
                         });
                     });
                     describe("Withdrawing", () => {
-                        it("Should clear storage", async () => {});
-                        it("Should be able to transfer desired asset", async () => {});
-                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                        it("Should clear storage", async () => {
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+                            expect(proceedsAfter).to.be.equals(0);
+                        });
+                        it("Should be able to transfer desired asset", async () => {
+                            const contractBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceBefore = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await NftMarketplace.connect(doodleHolder)[
+                                "withdrawProceeds(address)"
+                            ](targetToken);
+
+                            const contractBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                NftMarketplaceAddress
+                            );
+
+                            const clientBalanceAfter = await getErc20Balance(
+                                targetToken,
+                                wEthValidAccount.address,
+                                doodleHolder.address
+                            );
+                            const proceedsAfter =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            expect(contractBalanceAfter).to.be.equals(
+                                contractBalanceBefore - proceedsBefore
+                            );
+                            expect(proceedsAfter).to.be.equals(0);
+                            expect(clientBalanceAfter).to.be.equals(
+                                clientBalanceBefore + proceedsBefore
+                            );
+                        });
+                        it("Should emit `ProceedsWithdrawn`", async () => {
+                            const proceedsBefore =
+                                await NftMarketplace.getSupplierProceeds(
+                                    doodleHolder.address,
+                                    targetToken
+                                );
+
+                            await expect(
+                                NftMarketplace.connect(doodleHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.emit(NftMarketplace, "ProceedsWithdrawn")
+                                .withArgs(
+                                    doodleHolder.address,
+                                    targetToken,
+                                    proceedsBefore
+                                );
+                        });
                     });
                 });
             });
