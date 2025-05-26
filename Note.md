@@ -201,7 +201,7 @@
             - To not overcomplicate the standard, the intention of `safeTransferFrom` is to protect NFT from being sent
               to a contract that does not know how to handle it hence "lost", but this is an _unintended action_ but not
               an _invalid action_
-- [ ] Supplier balance "drained" by calling `withdrawProceeds`
+- [x] Supplier balance "drained" by calling `withdrawProceeds`
 
     - It seems that when using hardhat account, the balance is not "real", and after sending the account `ETH` either
       from forked "real" account or other hardhat account, the balance is refreshed
@@ -237,6 +237,18 @@
             Funder balance: 9469495045438202269208
             Supplier balance before: 0
             ```
+
+            Used impersonated account to fix this issue, see `mainnetMock.initializeNftHolders`;
+
+- [x] How to use mocha to catch multiple events in one call?
+    - No such thing, use ethers filter and events
+- [x] `ambiguous function description` from off-chain calls
+    - It is a problem with `ethers.js`, haven't dived very deep into this, but the recommended way to call overloading functions is this(tested and working):
+        ```javascript
+        NftMarketplace.connect(lilPudgysHolder)["withdrawProceeds(address)"](
+            targetToken
+        );
+        ```
 
 ## Testing
 

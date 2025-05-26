@@ -1,4 +1,5 @@
 const { ethers, ignition } = require("hardhat");
+const { Typed } = require("@nomicfoundation/hardhat-ethers");
 const { expect } = require("chai");
 
 const {
@@ -12,6 +13,7 @@ const {
 } = require("../../utils/blockchain/abis/aggregatorV3Interface");
 
 const {
+    initializeNftHolders,
     supplyToken,
     approveAllowance,
     transferNft,
@@ -5351,9 +5353,14 @@ describe("NftMarketplace", () => {
             boredApeYachtClubAddress = NFTTokens[1].address;
             lilPudgysAddress = NFTTokens[2].address;
 
-            doodleHolder = clientAccounts[0];
+            /*doodleHolder = clientAccounts[0];
             boredApeYachtClubHolder = clientAccounts[1];
-            lilPudgysHolder = clientAccounts[2];
+            lilPudgysHolder = clientAccounts[2];*/
+            const impersonatedHolders = await initializeNftHolders();
+            doodleHolder = impersonatedHolders.doodleHolder;
+            boredApeYachtClubHolder =
+                impersonatedHolders.boredApeYachtClubHolder;
+            lilPudgysHolder = impersonatedHolders.lilPudgysHolder;
 
             NftMarketplaceByDoodleHolder =
                 await NftMarketplace.connect(doodleHolder);
@@ -11247,33 +11254,102 @@ describe("NftMarketplace", () => {
                         wBtcBalanceBefore + wBtcProceeds
                     );
                 });
-                it("Should be able to send ETH to supplier", async () => {
-                    const [funder] = await ethers.getSigners();
-                    const funderBalance = await ethers.provider.getBalance(
-                        funder.address
+                it("Should emit `ProceedsWithdrawn` events per token", async () => {
+                    const wEthProceeds =
+                        await NftMarketplace.getSupplierProceeds(
+                            doodleHolder.address,
+                            wEthAddress
+                        );
+                    const usdcProceeds =
+                        await NftMarketplace.getSupplierProceeds(
+                            doodleHolder.address,
+                            usdcAddress
+                        );
+                    const daiProceeds =
+                        await NftMarketplace.getSupplierProceeds(
+                            doodleHolder.address,
+                            daiAddress
+                        );
+                    const linkProceeds =
+                        await NftMarketplace.getSupplierProceeds(
+                            doodleHolder.address,
+                            linkAddress
+                        );
+                    const uniProceeds =
+                        await NftMarketplace.getSupplierProceeds(
+                            doodleHolder.address,
+                            uniAddress
+                        );
+                    const wBtcProceeds =
+                        await NftMarketplace.getSupplierProceeds(
+                            doodleHolder.address,
+                            wBtcAddress
+                        );
+
+                    const startBlock = await ethers.provider.getBlockNumber();
+
+                    await NftMarketplace.connect(
+                        doodleHolder
+                    ).withdrawProceeds();
+
+                    const filter = NftMarketplace.filters.ProceedsWithdrawn();
+                    const events = await NftMarketplace.queryFilter(
+                        filter,
+                        startBlock
                     );
-                    console.log(`Funder balance: ${funderBalance}`);
-                    await funder.sendTransaction({
-                        to: doodleHolder.address,
-                        value: ethers.parseEther("10")
-                    });
 
-                    await funder.sendTransaction({
-                        to: doodleHolder.address,
-                        value: ethers.parseEther("10")
-                    });
+                    expect(events[0].args.supplier).to.be.equals(
+                        doodleHolder.address
+                    );
+                    expect(events[0].args.token).to.be.equals(
+                        supportedTokens[0]
+                    );
+                    expect(events[0].args.amount).to.be.equals(usdcProceeds);
 
+                    expect(events[1].args.supplier).to.be.equals(
+                        doodleHolder.address
+                    );
+                    expect(events[1].args.token).to.be.equals(
+                        supportedTokens[1]
+                    );
+                    expect(events[1].args.amount).to.be.equals(daiProceeds);
+
+                    expect(events[2].args.supplier).to.be.equals(
+                        doodleHolder.address
+                    );
+                    expect(events[2].args.token).to.be.equals(
+                        supportedTokens[2]
+                    );
+                    expect(events[2].args.amount).to.be.equals(linkProceeds);
+
+                    expect(events[3].args.supplier).to.be.equals(
+                        doodleHolder.address
+                    );
+                    expect(events[3].args.token).to.be.equals(
+                        supportedTokens[3]
+                    );
+                    expect(events[3].args.amount).to.be.equals(uniProceeds);
+
+                    expect(events[4].args.supplier).to.be.equals(
+                        doodleHolder.address
+                    );
+                    expect(events[4].args.token).to.be.equals(
+                        supportedTokens[4]
+                    );
+                    expect(events[4].args.amount).to.be.equals(wBtcProceeds);
+
+                    expect(events[5].args.supplier).to.be.equals(
+                        doodleHolder.address
+                    );
+                    expect(events[5].args.token).to.be.equals(wEthAddress);
+                    expect(events[5].args.amount).to.be.equals(wEthProceeds);
+                });
+                it("Should be able to send ETH to supplier", async () => {
                     const ethBalanceBefore = await ethers.provider.getBalance(
                         doodleHolder.address
                     );
-
-                    console.log(`Supplier balance before: ${ethBalanceBefore}`);
-
                     const contractEthBalanceBefore =
                         await ethers.provider.getBalance(NftMarketplaceAddress);
-                    console.log(
-                        `Contract balance before: ${contractEthBalanceBefore}`
-                    );
 
                     const ethProceeds =
                         await NftMarketplace.getSupplierProceeds(
@@ -11294,10 +11370,6 @@ describe("NftMarketplace", () => {
 
                     const contractEthBalanceAfter =
                         await ethers.provider.getBalance(NftMarketplaceAddress);
-                    console.log(
-                        `Contract balance after: ${contractEthBalanceAfter}`
-                    );
-                    console.log(`Supplier balance after: ${ethBalanceAfter}`);
 
                     expect(contractEthBalanceAfter).to.be.equals(
                         contractEthBalanceBefore - ethProceeds
@@ -11307,15 +11379,205 @@ describe("NftMarketplace", () => {
                         ethBalanceBefore + ethProceeds - gasFee
                     );
                 });
+                it("Should be able emit `ProceedsWithdrawn`", async () => {
+                    const ethProceeds =
+                        await NftMarketplace.getSupplierProceeds(
+                            doodleHolder.address,
+                            zeroAddress
+                        );
+                    const startBlock = await ethers.provider.getBlockNumber();
+
+                    await NftMarketplace.connect(
+                        doodleHolder
+                    ).withdrawProceeds();
+
+                    const filter = NftMarketplace.filters.ProceedsWithdrawn();
+                    const events = await NftMarketplace.queryFilter(
+                        filter,
+                        startBlock
+                    );
+
+                    expect(
+                        events[events.length - 1].args.supplier
+                    ).to.be.equals(doodleHolder.address);
+                    expect(events[events.length - 1].args.token).to.be.equals(
+                        zeroAddress
+                    );
+                    expect(events[events.length - 1].args.amount).to.be.equals(
+                        ethProceeds
+                    );
+                });
             });
             describe("Withdraw specific token", () => {
-                describe("ETH", () => {});
-                describe("wETH", () => {});
-                describe("USDC", () => {});
-                describe("DAI", () => {});
-                describe("LINK", () => {});
-                describe("UNI", () => {});
-                describe("wBTC", () => {});
+                let targetToken;
+                describe("ETH", () => {
+                    beforeEach(() => {
+                        targetToken = zeroAddress;
+                    });
+                    describe("Precautions", () => {
+                        it("Should revert if nothing to withdraw", async () => {
+                            await expect(
+                                NftMarketplace.connect(lilPudgysHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.be.revertedWithCustomError(
+                                    NftMarketplace,
+                                    "NftMarketplace__NothingToWithdraw"
+                                )
+                                .withArgs(lilPudgysHolder.address);
+                        });
+                    });
+                    describe("Withdrawing", () => {
+                        it("Should clear storage", async () => {});
+                        it("Should be able to transfer desired asset", async () => {});
+                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                    });
+                });
+                describe("wETH", () => {
+                    beforeEach(() => {
+                        targetToken = wEthAddress;
+                    });
+                    describe("Precautions", () => {
+                        it("Should revert if nothing to withdraw", async () => {
+                            await expect(
+                                NftMarketplace.connect(lilPudgysHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.be.revertedWithCustomError(
+                                    NftMarketplace,
+                                    "NftMarketplace__NothingToWithdraw"
+                                )
+                                .withArgs(lilPudgysHolder.address);
+                        });
+                    });
+                    describe("Withdrawing", () => {
+                        it("Should clear storage", async () => {});
+                        it("Should be able to transfer desired asset", async () => {});
+                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                    });
+                });
+                describe("USDC", () => {
+                    beforeEach(() => {
+                        targetToken = usdcAddress;
+                    });
+                    describe("Precautions", () => {
+                        it("Should revert if nothing to withdraw", async () => {
+                            await expect(
+                                NftMarketplace.connect(lilPudgysHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.be.revertedWithCustomError(
+                                    NftMarketplace,
+                                    "NftMarketplace__NothingToWithdraw"
+                                )
+                                .withArgs(lilPudgysHolder.address);
+                        });
+                    });
+                    describe("Withdrawing", () => {
+                        it("Should clear storage", async () => {});
+                        it("Should be able to transfer desired asset", async () => {});
+                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                    });
+                });
+                describe("DAI", () => {
+                    beforeEach(() => {
+                        targetToken = daiAddress;
+                    });
+                    describe("Precautions", () => {
+                        it("Should revert if nothing to withdraw", async () => {
+                            await expect(
+                                NftMarketplace.connect(lilPudgysHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.be.revertedWithCustomError(
+                                    NftMarketplace,
+                                    "NftMarketplace__NothingToWithdraw"
+                                )
+                                .withArgs(lilPudgysHolder.address);
+                        });
+                    });
+                    describe("Withdrawing", () => {
+                        it("Should clear storage", async () => {});
+                        it("Should be able to transfer desired asset", async () => {});
+                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                    });
+                });
+                describe("LINK", () => {
+                    beforeEach(() => {
+                        targetToken = linkAddress;
+                    });
+                    describe("Precautions", () => {
+                        it("Should revert if nothing to withdraw", async () => {
+                            await expect(
+                                NftMarketplace.connect(lilPudgysHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.be.revertedWithCustomError(
+                                    NftMarketplace,
+                                    "NftMarketplace__NothingToWithdraw"
+                                )
+                                .withArgs(lilPudgysHolder.address);
+                        });
+                    });
+                    describe("Withdrawing", () => {
+                        it("Should clear storage", async () => {});
+                        it("Should be able to transfer desired asset", async () => {});
+                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                    });
+                });
+                describe("UNI", () => {
+                    beforeEach(() => {
+                        targetToken = uniAddress;
+                    });
+                    describe("Precautions", () => {
+                        it("Should revert if nothing to withdraw", async () => {
+                            await expect(
+                                NftMarketplace.connect(lilPudgysHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.be.revertedWithCustomError(
+                                    NftMarketplace,
+                                    "NftMarketplace__NothingToWithdraw"
+                                )
+                                .withArgs(lilPudgysHolder.address);
+                        });
+                    });
+                    describe("Withdrawing", () => {
+                        it("Should clear storage", async () => {});
+                        it("Should be able to transfer desired asset", async () => {});
+                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                    });
+                });
+                describe("wBTC", () => {
+                    beforeEach(() => {
+                        targetToken = wBtcAddress;
+                    });
+                    describe("Precautions", () => {
+                        it("Should revert if nothing to withdraw", async () => {
+                            await expect(
+                                NftMarketplace.connect(lilPudgysHolder)[
+                                    "withdrawProceeds(address)"
+                                ](targetToken)
+                            )
+                                .to.be.revertedWithCustomError(
+                                    NftMarketplace,
+                                    "NftMarketplace__NothingToWithdraw"
+                                )
+                                .withArgs(lilPudgysHolder.address);
+                        });
+                    });
+                    describe("Withdrawing", () => {
+                        it("Should clear storage", async () => {});
+                        it("Should be able to transfer desired asset", async () => {});
+                        it("Should emit `ProceedsWithdrawn`", async () => {});
+                    });
+                });
             });
         });
     });

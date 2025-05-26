@@ -3,6 +3,29 @@ const { ethers } = require("hardhat");
 const { ERC20Abi } = require("./abis/erc20");
 const { ERC721Abi } = require("./abis/erc721");
 
+const initializeNftHolders = async () => {
+    let doodleHolder, boredApeYachtClubHolder, lilPudgysHolder;
+
+    const doodleHolderAddress = "0xC6426dcd6804A4519d366389d48ecC05370bD76a";
+    const boredApeYachtClubHolderAddress =
+        "0x3E71DAda87b34a5c9309C80752b5b43Bc04b7Dd9";
+    const lilPudgysHolderAddress = "0x82B5eD97d8A5A3497b75D2304368276AfEC672b6";
+
+    doodleHolder = await ethers.getImpersonatedSigner(doodleHolderAddress);
+    boredApeYachtClubHolder = await ethers.getImpersonatedSigner(
+        boredApeYachtClubHolderAddress
+    );
+    lilPudgysHolder = await ethers.getImpersonatedSigner(
+        lilPudgysHolderAddress
+    );
+
+    await supplyGas(doodleHolderAddress);
+    await supplyGas(boredApeYachtClubHolderAddress);
+    await supplyGas(lilPudgysHolderAddress);
+
+    return { doodleHolder, boredApeYachtClubHolder, lilPudgysHolder };
+};
+
 async function supplyGas(targetAddress) {
     const targetEthBalance = await ethers.provider.getBalance(targetAddress);
     if (targetEthBalance < ethers.parseEther("10")) {
@@ -127,6 +150,7 @@ const approveNft = async (tokenAddress, fromAddress, toAddress, tokenId) => {
 };
 
 module.exports = {
+    initializeNftHolders,
     supplyGas,
     supplyToken,
     approveAllowance,
