@@ -243,6 +243,7 @@
 - [x] How to use mocha to catch multiple events in one call?
     - No such thing, use ethers filter and events
 - [x] `ambiguous function description` from off-chain calls
+
     - It is a problem with `ethers.js`, haven't dived very deep into this, but the recommended way to call overloading functions is this(tested and working):
         ```javascript
         NftMarketplace.connect(lilPudgysHolder)["withdrawProceeds(address)"](
@@ -250,11 +251,15 @@
         );
         ```
 
+- [ ] Hardhat localhost
+    - `ProviderError: Transaction maxFeePerGas (535203954) is too low for the next block, which has a baseFeePerGas of 696801219`
+        - It does not occur on first run and first runs after deleting `ignition/deployments/chain-31337`, so I am suspecting it has something to do with forking, the block will come with an adjusted `baseFeePerGas` which does not match with `maxFeePerGas` defined by hardhat when sending txns
+
 ## Testing
 
 - Fork
     - When using fork, to give the local accounts, need to use hardhat ethers to impersonate the accounts and transfer
-      funds to the local test accounts(or just use the accounts, but we will need to instantiate the account first)
+      funds to the local test accounts (or just use the accounts, but we will need to instantiate the account first)
     - When sending funds or tokens, there may be scenarios where the original account does not have enough ETH to pay
       gas:
       `ProviderError: Sender doesn't have enough funds to send tx. The max upfront cost is: 79949756940000000 and the sender's balance is: 63297255814439858.`

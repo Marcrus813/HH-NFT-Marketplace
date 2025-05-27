@@ -35,6 +35,7 @@
         "h-i-deploy": "hardhat ignition deploy",
         "h-s-deploy": "hardhat run scripts/deploy.js",
         "h-verify": "hardhat ignition verify",
-        "h-run": "hardhat run"
+        "h-run": "hardhat run",
+        "h-export": "hardhat export"
     }
 }
