@@ -5,20 +5,11 @@
     <working-directory />
     <pass-parent-env>true</pass-parent-env>
     <ui />
-    <extra-mocha-options>--require hardhat/register --timeout 240000</extra-mocha-options>
+    <extra-mocha-options>--require hardhat/register --timeout 120000</extra-mocha-options>
     <test-kind>DIRECTORY</test-kind>
     <test-directory>./test/</test-directory>
     <recursive>true</recursive>
     <method v="2">
-      <option name="NpmBeforeRunTask" enabled="true">
-        <package-json value="$PROJECT_DIR$/package.json" />
-        <command value="run" />
-        <scripts>
-          <script value="h-clean" />
-        </scripts>
-        <node-interpreter value="project" />
-        <envs />
-      </option>
       <option name="NpmBeforeRunTask" enabled="true">
         <package-json value="$PROJECT_DIR$/package.json" />
         <command value="run" />

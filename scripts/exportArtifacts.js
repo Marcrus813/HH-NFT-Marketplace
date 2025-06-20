@@ -19,7 +19,7 @@ const exportContractArtifacts = async (taskArgs) => {
         `../ignition/deployments/chain-${chainId}/artifacts/NftMarketplaceModule#NftMarketplace.json`
     );
 
-    const targetDir = `${dir}/assets/artifacts`;
+    const targetDir = `${dir}/assets/artifacts/chain-${chainId}`;
 
     try {
         fs.mkdirSync(targetDir, { recursive: true });
@@ -33,11 +33,11 @@ const exportContractArtifacts = async (taskArgs) => {
 
         fs.writeFileSync(
             path.join(targetDir, "addresses.js"),
-            `const contractAddresses = ${JSON.stringify(addressData, null, 4)};\nmodule.exports = { contractAddresses };`
+            `export const contractAddresses = ${JSON.stringify(addressData, null, 4)};`
         );
         fs.writeFileSync(
             path.join(targetDir, "artifacts.js"),
-            `const contractArtifact = ${JSON.stringify(artifactData, null, 4)};\nmodule.exports = { contractArtifact };`
+            `export const contractArtifact = ${JSON.stringify(artifactData, null, 4)};`
         );
 
         console.log(

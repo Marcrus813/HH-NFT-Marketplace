@@ -278,3 +278,18 @@
 ## New best practices
 
 - Use `SafeTransferLib` to send ETH
+
+## Alternative implementations
+
+- How I did it
+    - To get all the listings, I used `s_activeListings`
+- How it should have been done
+    - Use events
+        - Start from deployment, read `TokenListed` indexed the results to a DB
+        - As of moving on to front end, I will pretend that I did not implement the array and use events to index the listed items
+            - Moralis uses a centralized DB(Won't be using it anyway)
+            - TheGraph takes a decentralized approach: timestamp: 1:03:57:25
+
+## Working with Sepolia
+
+- Since I have not implemented anything based on Sepolia, all are using addresses, price feeds from eth mainnet, I will only be interacting with the contract with ETH and strict payment to avoid involving token addresses and price feeds, and as for the NFTs to interact with, will use previous SVG NFT

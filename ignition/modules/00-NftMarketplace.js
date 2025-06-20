@@ -6,7 +6,7 @@ const { supportedTokens } = require("../../configs/contracts/supportedTokens");
 
 module.exports = buildModule("NftMarketplaceModule", (m) => {
     const NftMarketplace = m.contract("NftMarketplace", [supportedTokens], {
-        value: ethers.parseUnits("10", 18)
+        value: ethers.parseUnits("0.01", 18)
     });
 
     return { NftMarketplace };
